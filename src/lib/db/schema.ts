@@ -30,5 +30,8 @@ export const userProgress = pgTable('user_progress', {
     totalConversations: integer('total_conversations').default(0),
     totalMinutes: integer('total_minutes').default(0),
     currentStreak: integer('current_streak').default(0),
+    totalXp: integer('total_xp').default(0),
+    todayXp: integer('today_xp').default(0),
     lastSessionAt: timestamp('last_session_at'),
+    updatedAt: timestamp('updated_at').defaultNow(),
 })

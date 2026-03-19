@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { db } from '@/lib/db'
+import { userProgress } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import Link from 'next/link'
 import { Flame, Star, Activity, GraduationCap, ArrowRight } from 'lucide-react'
 
@@ -10,6 +13,14 @@ export default async function DashboardPage() {
     if (!user) redirect('/login')
 
     const firstName = user.user_metadata?.name?.split(' ')[0] || 'User'
+
+    const progress = await db.query.userProgress.findFirst({
+        where: eq(userProgress.userId, user.id)
+    })
+
+    const streak = progress?.currentStreak || 0
+    const totalXp = progress?.totalXp || 0
+    const totalConversations = progress?.totalConversations || 0
 
     return (
         <div className="p-6 space-y-8">
