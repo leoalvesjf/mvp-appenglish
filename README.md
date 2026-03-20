@@ -34,16 +34,18 @@ src/
 │   │   │   ├── page.tsx             ← Learning Path com progresso
 │   │   │   ├── [id]/page.tsx        ← Detail da lição com exercícios
 │   │   │   └── lessons-client.tsx   ← Componente do path
-│   │   ├── conversation/page.tsx    ← Conversa com Miss Ana
+│   │   ├── conversation/page.tsx    ← Conversa com Miss Ana (voz)
+│   │   ├── conversations/page.tsx   ← Histórico de conversas
 │   │   ├── vocabulary/page.tsx      ← Vocabulário do usuário
+│   │   ├── profile/page.tsx          ← Perfil + logout
 │   │   └── placement-test/          ← Teste de nível
 │   ├── api/
-│   │   ├── chat/route.ts             ← Claude Haiku (Miss Ana)
+│   │   ├── chat/route.ts             ← Claude Haiku (salva no banco)
 │   │   ├── transcribe/route.ts       ← Whisper STT
 │   │   ├── speak/route.ts            ← OpenAI TTS (nova)
 │   │   ├── lessons/complete/route.ts ← Completa lição e atribui XP
 │   │   ├── vocabulary/route.ts       ← Salva vocabulário
-│   │   └── placement-test/route.ts   ← Salva resultado do teste
+│   │   └── placement-test/route.ts  ← Salva resultado do teste
 │   └── page.tsx                      ← Landing page
 ├── lib/
 │   ├── supabase/
@@ -85,19 +87,33 @@ src/
 
 ### Vocabulário
 - Salva automaticamente palavras erradas + correção + explicação
--Disponível em `/vocabulary`
+- Disponível em `/vocabulary`
 - Fonte: exercícios das lições
 
 ### Teste de Nível (Placement Test)
 - 10 questões aleatórias de 15 disponíveis
 - Níveis: Beginner (< 50%), Intermediate (50-79%), Advanced (≥ 80%)
--Resultado salvo na tabela `users.english_level`
+- Resultado salvo na tabela `users.english_level`
 - Link no dashboard para refazer
 
 ### Dashboard
 - Exibe: nome do usuário, nível de inglês, streak, XP total
 - Link para testar nível novamente
 - Link para iniciar lições ou conversa
+
+### Conversas
+- Salva automaticamente no banco (apenas texto, sem áudio)
+- Histórico disponível em `/conversations`
+- Áudio gerado sob demanda (sem storage no Supabase)
+
+### Autenticação
+- Login/Register com Supabase Auth
+- Redirect automático se usuário logado acessar /login ou /register
+- Logout disponível em `/profile`
+
+### Landing Page
+- Página pública com CTA para cadastro
+- Features destacadas (Voice Practice, Structured Learning, Track Progress)
 
 ## Fluxo da conversa
 
@@ -106,12 +122,18 @@ Usuário fala
     ↓
 /api/transcribe  →  Whisper transcreve (~1.5s)
     ↓
-/api/chat        →  Claude Haiku responde (~1.4s)
+/api/chat        →  Claude Haiku responde (~1.4s) + salva no banco
     ↓
 /api/speak       →  Nova sintetiza voz (~3.5s)
     ↓
 Usuário ouve a Miss Ana
 ```
+
+## Estratégia de Custos
+
+- **Sem armazenar áudios** no Supabase (economiza storage do free tier)
+- **Texto salvo no banco** - Histórico de conversas preservado
+- **Áudio gerado sob demanda** - Custo ~$0.01 por resposta
 
 ## Variáveis de ambiente
 
@@ -151,6 +173,7 @@ Adiciona as variáveis de ambiente no painel da Vercel antes do deploy.
 
 - [x] Login e Register com Supabase Auth
 - [x] Redirect automático após login
+- [x] Redirect se usuário logado acessar /login ou /register
 - [x] Buscar nome do usuário logado no dashboard
 - [x] Dashboard com stats reais (XP, streak)
 - [x] Dashboard exibe nível de inglês
@@ -164,22 +187,18 @@ Adiciona as variáveis de ambiente no painel da Vercel antes do deploy.
 - [x] Sistema de vocabulário (palavras erradas + correção)
 - [x] Página de vocabulário do usuário
 - [x] Teste de nível (placement test) com 15 perguntas
+- [x] Salvar conversas no banco (texto)
+- [x] Histórico de conversas
+- [x] Logout funcionando
+- [x] Landing page com CTA
 - [x] CSS/design das telas (Tailwind + glass card pattern)
 - [x] Branch `improvements` no GitHub
 
 ### A fazer 📋
 
-#### High Priority
-- [ ] Landing page com CTA de cadastro
-- [ ] Logout funcionando
-- [ ] Redirecionar usuário logado que acessa `/login` ou `/register`
-- [ ] Salvar conversas no banco
-- [ ] Histórico de conversas
-- [ ] Deploy na Vercel
-
 #### Medium Priority
 - [ ] Cenários de conversa (restaurante, entrevista de emprego, hotel)
-- [ ] Sistema de correções inline durante conversas (mostrar erro → correção imediatamente)
+- [ ] Sistema de correções inline durante conversas
 - [ ] Daily Goal (meta diária de minutos)
 - [ ] Weekly XP Chart (gráfico de XP semanal)
 - [ ] Achievements (conquistas)
@@ -204,3 +223,6 @@ O `tts-1` é dedicado para síntese de voz — mais rápido e mais barato. O `gp
 
 **Por que Drizzle ORM?**
 Leve, type-safe, e funciona bem com Next.js Server Components. Permite queries type-safe sem overhead de ORM pesado.
+
+**Por que não salvar áudios?**
+Para manter o projeto dentro do free tier do Supabase (500MB) e economizar custos. Áudio é gerado sob demanda e não armazenado.
