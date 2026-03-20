@@ -19,6 +19,7 @@ export default function ConversationPage() {
     const [isRecording, setIsRecording] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [recordingTime, setRecordingTime] = useState(0)
+    const [conversationId, setConversationId] = useState<string | null>(null)
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const chunksRef = useRef<Blob[]>([])
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -94,9 +95,18 @@ export default function ConversationPage() {
             const chatRes = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: [...history, { role: 'user', content: text }], userName: 'Student', englishLevel: 'beginner' })
+                body: JSON.stringify({ 
+                    messages: [...history, { role: 'user', content: text }], 
+                    userName: 'Student', 
+                    englishLevel: 'beginner',
+                    conversationId 
+                })
             })
-            const { reply } = await chatRes.json()
+            const { reply, conversationId: newConversationId } = await chatRes.json()
+            
+            if (newConversationId && !conversationId) {
+                setConversationId(newConversationId)
+            }
 
             setMessages(prev => [...prev, { role: 'assistant', content: reply }])
 
