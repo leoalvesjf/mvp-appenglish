@@ -29,6 +29,7 @@ export default function LoginPage() {
         setError('')
 
         try {
+            console.log('[Login] Attempting login for:', email)
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -36,6 +37,7 @@ export default function LoginPage() {
             })
 
             const data = await res.json()
+            console.log('[Login] Response:', res.status, data)
 
             if (!res.ok) {
                 setError(data.error || 'Login failed')
@@ -43,6 +45,7 @@ export default function LoginPage() {
                 return
             }
 
+            console.log('[Login] Success, redirecting to dashboard')
             window.location.href = '/dashboard'
         } catch {
             setError('An error occurred. Please try again.')
