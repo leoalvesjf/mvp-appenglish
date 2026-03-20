@@ -46,6 +46,27 @@ export const userLessonProgress = pgTable('user_lesson_progress', {
     createdAt: timestamp('created_at').defaultNow(),
 })
 
+export const userVocabulary = pgTable('user_vocabulary', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id).notNull(),
+    word: text('word').notNull(),
+    correction: text('correction').notNull(),
+    explanation: text('explanation'),
+    source: text('source').default('lesson'),
+    lessonId: integer('lesson_id'),
+    createdAt: timestamp('created_at').defaultNow(),
+})
+
+export const placementQuestions = pgTable('placement_questions', {
+    id: serial('id').primaryKey(),
+    question: text('question').notNull(),
+    options: json('options').notNull(),
+    correctAnswer: text('correct_answer').notNull(),
+    explanation: text('explanation'),
+    level: text('level').notNull(),
+    category: text('category').default('general'),
+})
+
 export const lessons = pgTable('lessons', {
     id: serial('id').primaryKey(),
     title: text('title').notNull(),

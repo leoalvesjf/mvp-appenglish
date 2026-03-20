@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { userProgress } from '@/lib/db/schema'
+import { userProgress, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import Link from 'next/link'
-import { Flame, Star, Activity, GraduationCap, ArrowRight } from 'lucide-react'
+import { Flame, Star, Activity, GraduationCap, ArrowRight, Award } from 'lucide-react'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -18,9 +18,32 @@ export default async function DashboardPage() {
         where: eq(userProgress.userId, user.id)
     })
 
+    const userData = await db.query.users.findFirst({
+        where: eq(users.id, user.id)
+    })
+
+    const englishLevel = userData?.englishLevel || 'beginner'
     const streak = progress?.currentStreak || 0
     const totalXp = progress?.totalXp || 0
     const totalConversations = progress?.totalConversations || 0
+
+    const getLevelLabel = (level: string) => {
+        const labels: Record<string, string> = {
+            beginner: 'Beginner',
+            intermediate: 'Intermediate',
+            advanced: 'Advanced'
+        }
+        return labels[level] || 'Beginner'
+    }
+
+    const getLevelColor = (level: string) => {
+        const colors: Record<string, string> = {
+            beginner: 'text-green-400',
+            intermediate: 'text-yellow-400',
+            advanced: 'text-primary'
+        }
+        return colors[level] || 'text-green-400'
+    }
 
     return (
         <div className="p-6 space-y-8">
@@ -30,7 +53,15 @@ export default async function DashboardPage() {
                     <h1 className="text-3xl font-display font-bold text-white">
                         Hello, {firstName}
                     </h1>
-                    <p className="text-white/60 mt-1">Ready to master English?</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <Award className={`w-4 h-4 ${getLevelColor(englishLevel)}`} />
+                        <span className={`text-sm font-medium ${getLevelColor(englishLevel)}`}>
+                            {getLevelLabel(englishLevel)}
+                        </span>
+                        <Link href="/placement-test" className="text-white/40 hover:text-white text-xs">
+                            (Retest)
+                        </Link>
+                    </div>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/50 flex items-center justify-center text-primary font-bold text-lg">
                     {firstName[0].toUpperCase()}

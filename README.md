@@ -29,24 +29,28 @@ src/
 │   │   ├── login/page.tsx
 │   │   └── register/page.tsx
 │   ├── (app)/
-│   │   ├── dashboard/page.tsx        ← Stats reais do usuário
+│   │   ├── dashboard/page.tsx        ← Stats reais do usuário + nível
 │   │   ├── lessons/
 │   │   │   ├── page.tsx             ← Learning Path com progresso
 │   │   │   ├── [id]/page.tsx        ← Detail da lição com exercícios
 │   │   │   └── lessons-client.tsx   ← Componente do path
-│   │   └── conversation/page.tsx    ← Conversa com Miss Ana
+│   │   ├── conversation/page.tsx    ← Conversa com Miss Ana
+│   │   ├── vocabulary/page.tsx      ← Vocabulário do usuário
+│   │   └── placement-test/          ← Teste de nível
 │   ├── api/
 │   │   ├── chat/route.ts             ← Claude Haiku (Miss Ana)
 │   │   ├── transcribe/route.ts       ← Whisper STT
 │   │   ├── speak/route.ts            ← OpenAI TTS (nova)
-│   │   └── lessons/complete/route.ts ← Completa lição e atribui XP
+│   │   ├── lessons/complete/route.ts ← Completa lição e atribui XP
+│   │   ├── vocabulary/route.ts       ← Salva vocabulário
+│   │   └── placement-test/route.ts   ← Salva resultado do teste
 │   └── page.tsx                      ← Landing page
 ├── lib/
 │   ├── supabase/
 │   │   ├── client.ts
 │   │   └── server.ts
 │   ├── db/
-│   │   ├── schema.ts                 ← Drizzle schema (users, lessons, user_progress, user_lesson_progress)
+│   │   ├── schema.ts                 ← Drizzle schema
 │   │   ├── db.ts                     ← Drizzle client
 │   │   └── migrations/               ← Migrations do banco
 │   └── prompts/
@@ -62,12 +66,38 @@ src/
 - **lessons** - Lições do learning path (título, exercícios, XP reward, order)
 - **user_progress** - Progresso global do usuário (total XP, streak, conversas)
 - **user_lesson_progress** - Quais lições cada usuário completou (status, score)
+- **user_vocabulary** - Vocabulário errado + correção + explicação
+- **placement_questions** - Perguntas do teste de nível
 - **conversations** - Histórico de conversas com Miss Ana
 - **messages** - Mensagens de cada conversa
 
 ### Triggers
 
 - `handle_new_user()` - Cria registro na tabela `users` quando usuário se registra no Supabase Auth
+
+## Funcionalidades
+
+### Learning Path
+- Lições ordenadas pelo campo `order`
+- Usuário só acessa se tiver completado a anterior
+- Ao completar, ganha XP e próxima lição é desbloqueada
+- Lições completas com check verde, bloqueadas com ícone de lock
+
+### Vocabulário
+- Salva automaticamente palavras erradas + correção + explicação
+-Disponível em `/vocabulary`
+- Fonte: exercícios das lições
+
+### Teste de Nível (Placement Test)
+- 10 questões aleatórias de 15 disponíveis
+- Níveis: Beginner (< 50%), Intermediate (50-79%), Advanced (≥ 80%)
+-Resultado salvo na tabela `users.english_level`
+- Link no dashboard para refazer
+
+### Dashboard
+- Exibe: nome do usuário, nível de inglês, streak, XP total
+- Link para testar nível novamente
+- Link para iniciar lições ou conversa
 
 ## Fluxo da conversa
 
@@ -82,16 +112,6 @@ Usuário fala
     ↓
 Usuário ouve a Miss Ana
 ```
-
-## Learning Path
-
-O sistema de lições funciona assim:
-
-1. Lições são ordenadas pelo campo `order`
-2. Usuário só pode acessar uma lição se tiver completado a anterior
-3. Ao completar, ganha XP e a próxima lição é desbloqueada
-4. Lições completas aparecem com check verde no path
-5. Lições bloqueadas aparecem com ícone de lock
 
 ## Variáveis de ambiente
 
@@ -133,13 +153,17 @@ Adiciona as variáveis de ambiente no painel da Vercel antes do deploy.
 - [x] Redirect automático após login
 - [x] Buscar nome do usuário logado no dashboard
 - [x] Dashboard com stats reais (XP, streak)
+- [x] Dashboard exibe nível de inglês
 - [x] Proteger rotas `/dashboard`, `/lessons`, `/conversation`
-- [x] Tabelas no Supabase (users, lessons, conversations, messages, user_progress, user_lesson_progress)
+- [x] Tabelas no Supabase (users, lessons, conversations, messages, user_progress, user_lesson_progress, user_vocabulary, placement_questions)
 - [x] Trigger para sincronizar users com auth.users
 - [x] Salvar progresso de lição no banco
 - [x] Learning Path com progresso por usuário
 - [x] Exercícios das lições (multiple choice, fill in blank, drag and drop)
 - [x] Atribuição de XP ao completar lição
+- [x] Sistema de vocabulário (palavras erradas + correção)
+- [x] Página de vocabulário do usuário
+- [x] Teste de nível (placement test) com 15 perguntas
 - [x] CSS/design das telas (Tailwind + glass card pattern)
 - [x] Branch `improvements` no GitHub
 
@@ -154,8 +178,11 @@ Adiciona as variáveis de ambiente no painel da Vercel antes do deploy.
 - [ ] Deploy na Vercel
 
 #### Medium Priority
-- [ ] Níveis de inglês (beginner/intermediate/advanced)
-- [ ] Cenários (restaurante, entrevista de emprego, hotel)
+- [ ] Cenários de conversa (restaurante, entrevista de emprego, hotel)
+- [ ] Sistema de correções inline durante conversas (mostrar erro → correção imediatamente)
+- [ ] Daily Goal (meta diária de minutos)
+- [ ] Weekly XP Chart (gráfico de XP semanal)
+- [ ] Achievements (conquistas)
 - [ ] Streaming do TTS para reduzir latência percebida
 
 #### Low Priority

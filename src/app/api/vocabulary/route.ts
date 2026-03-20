@@ -1,0 +1,35 @@
+import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { userVocabulary } from '@/lib/db/schema'
+import { NextResponse } from 'next/server'
+
+export async function POST(req: Request) {
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+            return new NextResponse('Unauthorized', { status: 401 })
+        }
+
+        const { word, correction, explanation, source, lessonId } = await req.json()
+
+        if (!word || !correction) {
+            return new NextResponse('Missing word or correction', { status: 400 })
+        }
+
+        await db.insert(userVocabulary).values({
+            userId: user.id,
+            word,
+            correction,
+            explanation: explanation || null,
+            source: source || 'lesson',
+            lessonId: lessonId || null,
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error('Error saving vocabulary:', error)
+        return new NextResponse('Internal Server Error', { status: 500 })
+    }
+}

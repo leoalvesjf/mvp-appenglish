@@ -24,6 +24,7 @@ type Lesson = {
     xpReward: number | null
     exercises: unknown
     vocabulary: unknown
+    correction?: string
 }
 
 export default function LessonDetailClient({ lesson }: { lesson: Lesson }) {
@@ -106,6 +107,7 @@ export default function LessonDetailClient({ lesson }: { lesson: Lesson }) {
                         exercise={exercise}
                         current={current}
                         total={exercises.length}
+                        lessonId={lesson.id}
                         onCorrect={() => setScore(s => s + 1)}
                         onNext={handleNext}
                     />
@@ -119,12 +121,14 @@ function ExerciseView({
     exercise,
     current,
     total,
+    lessonId,
     onCorrect,
     onNext
 }: {
     exercise: Exercise
     current: number
     total: number
+    lessonId: number
     onCorrect: () => void
     onNext: () => Promise<void>
 }) {
@@ -139,7 +143,7 @@ function ExerciseView({
     const [checked, setChecked] = useState(false)
     const [correct, setCorrect] = useState(false)
 
-    const handleCheck = () => {
+    const handleCheck = async () => {
         let answer = ''
         if (exercise.type === 'multiple_choice') answer = selected || ''
         if (exercise.type === 'fill_in_blank') answer = fillAnswer.trim().toLowerCase()
@@ -148,7 +152,21 @@ function ExerciseView({
         const isCorrect = answer.toLowerCase() === exercise.correctAnswer.toLowerCase()
         setCorrect(isCorrect)
         setChecked(true)
-        if (isCorrect) onCorrect()
+        if (isCorrect) {
+            onCorrect()
+        } else if (answer) {
+            await fetch('/api/vocabulary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    word: answer,
+                    correction: exercise.correctAnswer,
+                    explanation: exercise.explanation,
+                    source: 'lesson',
+                    lessonId
+                })
+            })
+        }
     }
 
     const addWord = (word: string) => {
