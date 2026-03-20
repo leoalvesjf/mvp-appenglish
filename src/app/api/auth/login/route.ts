@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { login } from '@/lib/auth'
-import { cookies } from 'next/headers'
 
 export async function POST(req: Request) {
     try {
@@ -22,8 +21,12 @@ export async function POST(req: Request) {
             )
         }
 
-        const cookieStore = await cookies()
-        cookieStore.set('auth_token', result.token!, {
+        const response = NextResponse.json({
+            success: true,
+            user: result.user,
+        })
+
+        response.cookies.set('auth_token', result.token!, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -31,10 +34,7 @@ export async function POST(req: Request) {
             path: '/',
         })
 
-        return NextResponse.json({
-            success: true,
-            user: result.user,
-        })
+        return response
     } catch (error) {
         console.error('Login error:', error)
         return NextResponse.json(
