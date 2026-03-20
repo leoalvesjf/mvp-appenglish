@@ -10,10 +10,12 @@ export default function RegisterPage() {
     const [formData, setFormData] = useState({ name: '', phone: '', email: '', password: '' })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(true)
+    const [origin, setOrigin] = useState('')
     const router = useRouter()
     const supabase = createClient()
 
     useEffect(() => {
+        setOrigin(window.location.origin)
         supabase.auth.getUser().then(({ data: { user } }) => {
             if (user) {
                 router.push('/dashboard')
@@ -41,15 +43,20 @@ export default function RegisterPage() {
         const { error } = await supabase.auth.signUp({
             email: formData.email,
             password: formData.password,
-            options: { data: { name: formData.name, phone: formData.phone } }
+            options: { 
+                data: { name: formData.name, phone: formData.phone },
+                emailRedirectTo: `${origin}/auth/callback`
+            }
         })
         if (error) {
             setError(error.message)
             setLoading(false)
             return
         }
-        router.push('/dashboard')
-        router.refresh()
+        setError('')
+        setFormData({ name: '', phone: '', email: '', password: '' })
+        setLoading(false)
+        alert('Account created! Please check your email to confirm your account.')
     }
 
     return (
