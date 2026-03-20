@@ -25,119 +25,113 @@ O usuário fala em inglês pelo microfone, a Miss Ana (IA) ouve, responde em ing
 ```
 src/
 ├── app/
-│   ├── (auth)/
-│   │   ├── login/page.tsx
-│   │   └── register/page.tsx
-│   ├── (app)/
-│   │   ├── dashboard/page.tsx        ← Stats reais do usuário + nível
-│   │   ├── lessons/
-│   │   │   ├── page.tsx             ← Learning Path com progresso
-│   │   │   ├── [id]/page.tsx        ← Detail da lição com exercícios
-│   │   │   └── lessons-client.tsx   ← Componente do path
-│   │   ├── conversation/page.tsx    ← Conversa com Miss Ana (voz)
-│   │   ├── conversations/page.tsx   ← Histórico de conversas
-│   │   ├── vocabulary/page.tsx      ← Vocabulário do usuário
-│   │   ├── profile/page.tsx          ← Perfil + logout
-│   │   └── placement-test/          ← Teste de nível
-│   ├── api/
-│   │   ├── chat/route.ts             ← Claude Haiku (salva no banco)
-│   │   ├── transcribe/route.ts       ← Whisper STT
-│   │   ├── speak/route.ts            ← OpenAI TTS (nova)
-│   │   ├── lessons/complete/route.ts ← Completa lição e atribui XP
-│   │   ├── vocabulary/route.ts       ← Salva vocabulário
-│   │   └── placement-test/route.ts  ← Salva resultado do teste
-│   └── page.tsx                      ← Landing page
+│   ├── (auth)/login, register
+│   ├── (app)/dashboard, lessons, conversation, conversations, vocabulary, profile, placement-test
+│   ├── api/chat, transcribe, speak, lessons/complete, vocabulary, placement-test
+│   └── page.tsx (Landing)
 ├── lib/
-│   ├── supabase/
-│   │   ├── client.ts
-│   │   └── server.ts
-│   ├── db/
-│   │   ├── schema.ts                 ← Drizzle schema
-│   │   ├── db.ts                     ← Drizzle client
-│   │   └── migrations/               ← Migrations do banco
-│   └── prompts/
-│       └── miss-ana.ts               ← System prompt da Miss Ana
-└── proxy.ts                          ← Proteção de rotas (SSR cookie)
+│   ├── supabase/, db/, prompts/
+│   └── proxy.ts
 ```
 
 ## Banco de Dados
 
 ### Tabelas
 
-- **users** - Usuários cadastrados (sincronizado com Supabase Auth via trigger)
-- **lessons** - Lições do learning path (título, exercícios, XP reward, order)
-- **user_progress** - Progresso global do usuário (total XP, streak, conversas)
-- **user_lesson_progress** - Quais lições cada usuário completou (status, score)
-- **user_vocabulary** - Vocabulário errado + correção + explicação
+- **users** - Usuários cadastrados
+- **lessons** - Lições do learning path
+- **user_progress** - Progresso (XP, streak, conversas)
+- **user_lesson_progress** - Lições completadas por usuário
+- **user_vocabulary** - Vocabulário errado + correção
 - **placement_questions** - Perguntas do teste de nível
-- **conversations** - Histórico de conversas com Miss Ana
-- **messages** - Mensagens de cada conversa
+- **conversations** / **messages** - Histórico de conversas
+- **daily_missions** - Missões diárias (TODO)
+- **user_achievements** - Conquistas desbloqueadas (TODO)
 
 ### Triggers
 
-- `handle_new_user()` - Cria registro na tabela `users` quando usuário se registra no Supabase Auth
+- `handle_new_user()` - Sincroniza users com Supabase Auth
+
+---
 
 ## Funcionalidades
 
 ### Learning Path
-- Lições ordenadas pelo campo `order`
-- Usuário só acessa se tiver completado a anterior
-- Ao completar, ganha XP e próxima lição é desbloqueada
-- Lições completas com check verde, bloqueadas com ícone de lock
+- Lições ordenadas por `order`
+- Usuário só acessa se completou a anterior
+- Ao completar: XP + próxima lição desbloqueada
 
 ### Vocabulário
-- Salva automaticamente palavras erradas + correção + explicação
-- Disponível em `/vocabulary`
-- Fonte: exercícios das lições
+- Salva palavras erradas + correção + explicação
+-Disponível em `/vocabulary`
 
-### Teste de Nível (Placement Test)
-- 10 questões aleatórias de 15 disponíveis
-- Níveis: Beginner (< 50%), Intermediate (50-79%), Advanced (≥ 80%)
-- Resultado salvo na tabela `users.english_level`
-- Link no dashboard para refazer
-
-### Dashboard
-- Exibe: nome do usuário, nível de inglês, streak, XP total
-- Link para testar nível novamente
-- Link para iniciar lições ou conversa
+### Teste de Nível
+- 10 questões aleatórias (15 no banco)
+- Níveis: Beginner (<50%), Intermediate (50-79%), Advanced (≥80%)
 
 ### Conversas
-- Salva automaticamente no banco (apenas texto, sem áudio)
-- Histórico disponível em `/conversations`
-- Áudio gerado sob demanda (sem storage no Supabase)
+- Salva texto no banco (sem áudio)
+- Histórico em `/conversations`
 
 ### Autenticação
 - Login/Register com Supabase Auth
-- Redirect automático se usuário logado acessar /login ou /register
-- Logout disponível em `/profile`
+- Redirect automático
+- Logout em `/profile`
 
 ### Landing Page
-- Página pública com CTA para cadastro
-- Features destacadas (Voice Practice, Structured Learning, Track Progress)
+- Página pública com CTA
+
+---
+
+## Sistema de Gamificação (Em desenvolvimento)
+
+### Missões Diárias
+3 missões por dia que resettam às midnight:
+- Complete 1 lesson
+- Practice 5 min with Miss Ana
+- Review vocabulary
+
+**Bônus:** XP extra ao completar todas
+
+### Níveis Granulares
+Cada nível = 500 XP:
+- Beginner A1 → A2
+- Intermediate B1 → B2
+- Advanced C1 → C2
+
+Mais feedback visual de progresso.
+
+### Achievements (Conquistas)
+| Achievement | Condição |
+|-------------|----------|
+| 🌟 Primeira Lição | Complete first lesson |
+| 🔥 7 Dias de Streak | 7-day streak |
+| 📚 100 Palavras | 100 vocabulary words |
+| 🗣️ Primeira Conversa | First voice conversation |
+| 🏆 Todas as Lições | Complete all lessons of a level |
+| ⭐ Primeira Semana | 7 days on platform |
+
+### Daily Goal
+- Meta padrão: 10 minutos/dia
+- Barra de progresso no dashboard
+
+---
 
 ## Fluxo da conversa
 
 ```
-Usuário fala
-    ↓
-/api/transcribe  →  Whisper transcreve (~1.5s)
-    ↓
-/api/chat        →  Claude Haiku responde (~1.4s) + salva no banco
-    ↓
-/api/speak       →  Nova sintetiza voz (~3.5s)
-    ↓
-Usuário ouve a Miss Ana
+Usuário fala → Whisper → Claude Haiku → TTS → Miss Ana responde
 ```
 
 ## Estratégia de Custos
 
-- **Sem armazenar áudios** no Supabase (economiza storage do free tier)
-- **Texto salvo no banco** - Histórico de conversas preservado
-- **Áudio gerado sob demanda** - Custo ~$0.01 por resposta
+- **Sem armazenar áudios** no Supabase
+- **Texto salvo no banco**
+- **Áudio gerado sob demanda**
+
+---
 
 ## Variáveis de ambiente
-
-Cria um `.env.local` na raiz com:
 
 ```env
 DATABASE_URL=postgresql://...
@@ -155,74 +149,43 @@ pnpm install
 pnpm dev
 ```
 
-Acessa `http://localhost:3000`
-
-## Deploy
-
-```bash
-vercel --prod
-```
-
-Adiciona as variáveis de ambiente no painel da Vercel antes do deploy.
-
 ---
 
 ## Roadmap
 
 ### Feito ✅
-
-- [x] Login e Register com Supabase Auth
-- [x] Redirect automático após login
-- [x] Redirect se usuário logado acessar /login ou /register
-- [x] Buscar nome do usuário logado no dashboard
-- [x] Dashboard com stats reais (XP, streak)
-- [x] Dashboard exibe nível de inglês
-- [x] Proteger rotas `/dashboard`, `/lessons`, `/conversation`
-- [x] Tabelas no Supabase (users, lessons, conversations, messages, user_progress, user_lesson_progress, user_vocabulary, placement_questions)
-- [x] Trigger para sincronizar users com auth.users
-- [x] Salvar progresso de lição no banco
-- [x] Learning Path com progresso por usuário
-- [x] Exercícios das lições (multiple choice, fill in blank, drag and drop)
-- [x] Atribuição de XP ao completar lição
-- [x] Sistema de vocabulário (palavras erradas + correção)
-- [x] Página de vocabulário do usuário
-- [x] Teste de nível (placement test) com 15 perguntas
-- [x] Salvar conversas no banco (texto)
+- [x] Login/Register com Supabase Auth
+- [x] Redirect automático
+- [x] Dashboard com stats (XP, streak, nível)
+- [x] Learning Path com progresso
+- [x] Exercícios (multiple choice, fill in blank, drag and drop)
+- [x] Sistema de vocabulário
+- [x] Placement test (15 perguntas)
+- [x] Salvar conversas no banco
 - [x] Histórico de conversas
-- [x] Logout funcionando
+- [x] Logout
 - [x] Landing page com CTA
-- [x] CSS/design das telas (Tailwind + glass card pattern)
-- [x] Branch `improvements` no GitHub
+
+### Em desenvolvimento 🚧
+- [ ] Missões diárias
+- [ ] Achievements
+- [ ] Daily goal com progresso
 
 ### A fazer 📋
-
-#### Medium Priority
-- [ ] Cenários de conversa (restaurante, entrevista de emprego, hotel)
-- [ ] Sistema de correções inline durante conversas
-- [ ] Daily Goal (meta diária de minutos)
-- [ ] Weekly XP Chart (gráfico de XP semanal)
-- [ ] Achievements (conquistas)
-- [ ] Streaming do TTS para reduzir latência percebida
-
-#### Low Priority
-- [ ] PWA (instalar no celular)
-- [ ] Testes automatizados
+- Cenários de conversa (restaurante, entrevista, hotel)
+- Sistema de SRS para vocabulário
+- Streaming TTS
+- PWA
 
 ---
 
 ## Decisões técnicas
 
-**Por que Next.js em vez de React + Express?**
-Todo o backend roda como API Routes serverless na Vercel. Zero servidor separado, zero cold start, um único deploy.
+**Por que não salvar áudios?**
+Para manter dentro do free tier do Supabase (500MB).
 
 **Por que Claude Haiku?**
-Mais rápido e barato que o GPT-4o para conversação simples. Miss Ana não precisa de raciocínio complexo — precisa de respostas rápidas e naturais.
-
-**Por que tts-1 em vez de gpt-4o-audio-preview?**
-O `tts-1` é dedicado para síntese de voz — mais rápido e mais barato. O `gpt-4o-audio-preview` é um modelo de chat com capacidade de áudio, desnecessariamente pesado para TTS simples.
+Mais rápido e barato que GPT-4o para conversação simples.
 
 **Por que Drizzle ORM?**
-Leve, type-safe, e funciona bem com Next.js Server Components. Permite queries type-safe sem overhead de ORM pesado.
-
-**Por que não salvar áudios?**
-Para manter o projeto dentro do free tier do Supabase (500MB) e economizar custos. Áudio é gerado sob demanda e não armazenado.
+Leve, type-safe, funciona bem com Next.js Server Components.

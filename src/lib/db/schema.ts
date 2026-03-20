@@ -34,6 +34,21 @@ export const userProgress = pgTable('user_progress', {
     todayXp: integer('today_xp').default(0),
     lastSessionAt: timestamp('last_session_at'),
     updatedAt: timestamp('updated_at').defaultNow(),
+    achievements: json('achievements').default([]),
+    dailyGoalMinutes: integer('daily_goal_minutes').default(10),
+    todayMinutes: integer('today_minutes').default(0),
+    lastActivityDate: timestamp('last_activity_date'),
+    dailyMissions: json('daily_missions').default([]),
+    missionsCompletedAt: timestamp('missions_completed_at'),
+})
+
+export const dailyMissions = pgTable('daily_missions', {
+    id: serial('id').primaryKey(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    type: text('type').notNull(),
+    target: integer('target').default(1),
+    xpReward: integer('xp_reward').default(10),
 })
 
 export const userLessonProgress = pgTable('user_lesson_progress', {

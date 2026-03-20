@@ -102,14 +102,18 @@ export default async function DashboardPage() {
                 <div className="flex justify-between items-end mb-4">
                     <div>
                         <h3 className="text-lg font-semibold text-white">Daily Goal</h3>
-                        <p className="text-sm text-white/50">0 / 10 mins</p>
+                        <p className="text-sm text-white/50">{progress?.todayMinutes || 0} / 10 mins</p>
                     </div>
                     <span className="px-2.5 py-1 rounded-full text-xs font-medium border bg-primary/20 text-primary border-primary/30">
-                        0%
+                        {Math.min(((progress?.todayMinutes || 0) / 10) * 100, 100)}%
                     </span>
                 </div>
                 <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: '0%' }} />
+                    <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full" style={{ width: `${Math.min(((progress?.todayMinutes || 0) / 10) * 100, 100)}%` }} />
+                </div>
+                <div className="flex items-center gap-2 mt-3 text-xs text-white/40">
+                    <Activity className="w-4 h-4" />
+                    <span>Keep your streak to earn bonus XP!</span>
                 </div>
             </div>
 
