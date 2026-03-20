@@ -104,7 +104,8 @@ export async function login(email: string, password: string) {
         return { error: 'Invalid credentials' }
     }
 
-    if (!user.emailVerified) {
+    const skipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true'
+    if (!user.emailVerified && !skipVerification) {
         return { error: 'Please verify your email first' }
     }
 
