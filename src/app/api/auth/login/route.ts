@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server'
 import { login } from '@/lib/auth'
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
     try {
+        const ip = getClientIP(req)
+        if (!checkRateLimit(ip)) {
+            return NextResponse.json(
+                { error: 'Too many attempts. Please try again later.' },
+                { status: 429 }
+            )
+        }
+
         const { email, password } = await req.json()
 
         if (!email || !password) {
@@ -29,14 +38,13 @@ export async function POST(req: Request) {
         response.cookies.set('auth_token', result.token!, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60,
             path: '/',
         })
 
         return response
     } catch (error) {
-        console.error('Login error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

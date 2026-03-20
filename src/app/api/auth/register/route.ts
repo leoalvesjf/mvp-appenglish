@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server'
 import { register } from '@/lib/auth'
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
     try {
+        const ip = getClientIP(req)
+        if (!checkRateLimit(ip)) {
+            return NextResponse.json(
+                { error: 'Too many attempts. Please try again later.' },
+                { status: 429 }
+            )
+        }
+
         const { email, password, name, phone } = await req.json()
 
         if (!email || !password || !name) {
@@ -33,7 +42,6 @@ export async function POST(req: Request) {
             message: 'Account created! Please check your email to verify your account.',
         })
     } catch (error) {
-        console.error('Register error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
