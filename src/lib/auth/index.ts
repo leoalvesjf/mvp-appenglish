@@ -1,10 +1,9 @@
 import { db } from '@/lib/db'
-import { authUsers, sessions } from '@/lib/db/schema'
+import { authUsers } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
-import { sendConfirmationEmail } from './email'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 const SESSION_DURATION_DAYS = 7
@@ -66,8 +65,6 @@ export async function register(email: string, password: string, name: string, ph
         })
         .returning()
 
-    await sendConfirmationEmail(email, emailToken)
-
     return { user: { id: user.id, email: user.email, name: user.name } }
 }
 
@@ -115,28 +112,20 @@ export async function login(email: string, password: string) {
     }
 
     const token = generateJWT(user.id)
-    const expiresAt = new Date(Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000)
 
-    await db.insert(sessions)
-        .values({
-            userId: user.id,
-            token,
-            expiresAt,
-        })
-
-        return {
-            token,
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                emailVerified: user.emailVerified ?? false,
-            }
+    return {
+        token,
+        user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            emailVerified: user.emailVerified ?? false,
         }
+    }
 }
 
 export async function logout(token: string) {
-    await db.delete(sessions).where(eq(sessions.token, token))
+    // No session table - JWT is stateless
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
@@ -148,16 +137,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const decoded = verifyJWT(token)
     if (!decoded) return null
 
-    const session = await db.query.sessions.findFirst({
-        where: eq(sessions.token, token)
-    })
-
-    if (!session || new Date(session.expiresAt) < new Date()) {
-        return null
-    }
-
     const user = await db.query.authUsers.findFirst({
-        where: eq(authUsers.id, session.userId)
+        where: eq(authUsers.id, decoded.userId)
     })
 
     if (!user) return null
@@ -193,8 +174,6 @@ export async function resendConfirmation(email: string) {
             emailTokenExpires,
         })
         .where(eq(authUsers.id, user.id))
-
-    await sendConfirmationEmail(email, emailToken)
 
     return { success: true }
 }

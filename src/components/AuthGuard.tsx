@@ -13,7 +13,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         console.log('[AuthGuard] Starting auth check...')
         console.log('[AuthGuard] All cookies:', document.cookie)
 
-        fetch('/api/auth/me')
+        fetch('/api/auth/me', { credentials: 'include' })
             .then(res => {
                 console.log('[AuthGuard] Response status:', res.status)
                 return res.json().then(data => ({ status: res.status, data }))
