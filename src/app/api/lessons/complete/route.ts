@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/auth/helpers'
 import { db } from '@/lib/db'
 import { userProgress, userLessonProgress } from '@/lib/db/schema'
 import { eq, sql, and } from 'drizzle-orm'
@@ -8,14 +8,13 @@ import { checkAndAwardAchievements } from '@/lib/gamification/achievements'
 
 export async function POST(req: Request) {
     try {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getAuthenticatedUser()
 
         if (!user) {
             return new NextResponse('Unauthorized', { status: 401 })
         }
 
-        const { lessonId, xpReward, score, total } = await req.json()
+        const { lessonId, xpReward, score } = await req.json()
 
         if (!lessonId) {
             return new NextResponse('Missing lessonId', { status: 400 })

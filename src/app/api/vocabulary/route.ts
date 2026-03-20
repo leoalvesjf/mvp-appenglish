@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/auth/helpers'
 import { db } from '@/lib/db'
 import { userVocabulary } from '@/lib/db/schema'
 import { NextResponse } from 'next/server'
@@ -7,8 +7,7 @@ import { checkAndAwardAchievements } from '@/lib/gamification/achievements'
 
 export async function POST(req: Request) {
     try {
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const user = await getAuthenticatedUser()
 
         if (!user) {
             return new NextResponse('Unauthorized', { status: 401 })

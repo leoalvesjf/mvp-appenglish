@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Brain, Loader2, ArrowLeft, Mail } from 'lucide-react'
@@ -12,15 +11,13 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
     const router = useRouter()
-    const supabase = createClient()
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user) {
-                router.push('/dashboard')
-            }
-        })
-    }, [router, supabase])
+        const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))
+        if (token) {
+            router.push('/dashboard')
+        }
+    }, [router])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))

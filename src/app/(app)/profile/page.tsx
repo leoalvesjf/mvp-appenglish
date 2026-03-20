@@ -1,10 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ProfileClient from './profile-client'
+import { getAuthenticatedUser } from '@/lib/auth/helpers'
 
 export default async function ProfilePage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getAuthenticatedUser()
 
     if (!user) redirect('/login')
 

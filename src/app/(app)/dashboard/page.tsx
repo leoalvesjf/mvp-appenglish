@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { userProgress } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { getCurrentUser } from '@/lib/auth'
 import Link from 'next/link'
 import { Flame, Star, Activity, GraduationCap, ArrowRight, Award } from 'lucide-react'
 import { DailyMissions, AchievementsGrid } from '@/components/gamification'
@@ -15,12 +15,11 @@ import {
 } from '@/lib/gamification/levels'
 
 export default async function DashboardPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
 
     if (!user) redirect('/login')
 
-    const firstName = user.user_metadata?.name?.split(' ')[0] || 'User'
+    const firstName = user.name?.split(' ')[0] || 'User'
 
     const progress = await db.query.userProgress.findFirst({
         where: eq(userProgress.userId, user.id)

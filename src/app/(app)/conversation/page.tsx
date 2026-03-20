@@ -1,14 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { userProgress } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getCurrentLevel } from '@/lib/gamification/levels'
 import ConversationClient from './conversation-client'
+import { getAuthenticatedUser } from '@/lib/auth/helpers'
 
 export default async function ConversationPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getAuthenticatedUser()
 
     if (!user) redirect('/login')
 

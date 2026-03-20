@@ -1,12 +1,11 @@
 import { db } from '@/lib/db'
 import { lessons, userLessonProgress } from '@/lib/db/schema'
 import { asc, eq } from 'drizzle-orm'
-import { createClient } from '@/lib/supabase/server'
 import LessonsClient from './lessons-client'
+import { getAuthenticatedUser } from '@/lib/auth/helpers'
 
 export default async function LessonsPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getAuthenticatedUser()
 
     const allLessons = await db.select().from(lessons).orderBy(asc(lessons.order))
 

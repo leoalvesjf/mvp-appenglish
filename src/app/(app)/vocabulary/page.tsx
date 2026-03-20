@@ -1,13 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import { userVocabulary } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import VocabularyClient from './vocabulary-client'
+import { getAuthenticatedUser } from '@/lib/auth/helpers'
 
 export default async function VocabularyPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getAuthenticatedUser()
 
     if (!user) redirect('/login')
 
