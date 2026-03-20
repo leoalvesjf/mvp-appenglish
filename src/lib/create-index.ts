@@ -6,8 +6,9 @@ async function run() {
     try {
         await db.execute(sql`ALTER TABLE user_progress ADD CONSTRAINT user_progress_user_id_unique UNIQUE (user_id)`)
         console.log('Index created successfully!')
-    } catch (e: any) {
-        if (e.message?.includes('already exists')) {
+    } catch (e: unknown) {
+        const error = e as { message?: string }
+        if (error.message?.includes('already exists')) {
             console.log('Constraint already exists, skipping.')
         } else {
             console.error('Failed to create index:', e)

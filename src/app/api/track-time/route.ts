@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { userProgress } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { resetDailyMissionsIfNeeded, updateMissionProgress } from '@/lib/gamification/missions'
+import { checkAndAwardAchievements } from '@/lib/gamification/achievements'
 
 export async function POST(req: Request) {
     try {
@@ -81,6 +83,10 @@ export async function POST(req: Request) {
                     }
                 })
         }
+
+        await resetDailyMissionsIfNeeded(user.id)
+        await updateMissionProgress(user.id, 'conversation', minutesToAdd)
+        await checkAndAwardAchievements(user.id)
 
         return NextResponse.json({ 
             success: true, 

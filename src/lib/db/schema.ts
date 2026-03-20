@@ -14,6 +14,7 @@ export const conversations = pgTable('conversations', {
     startedAt: timestamp('started_at').defaultNow(),
     endedAt: timestamp('ended_at'),
     messageCount: integer('message_count').default(0),
+    scenario: text('scenario').default('tutor'),
 })
 
 export const messages = pgTable('messages', {

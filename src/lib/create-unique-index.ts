@@ -27,11 +27,12 @@ const sql = postgres(databaseUrl, { ssl: false }); // adjust if needed
   try {
     await sql`ALTER TABLE user_progress ADD CONSTRAINT user_progress_user_id_unique UNIQUE (user_id)`;
     console.log('✅ Constraint created successfully');
-  } catch (err: any) {
-    if (err?.message?.includes('already exists')) {
+  } catch (err: unknown) {
+    const error = err as { message?: string }
+    if (error.message?.includes('already exists')) {
       console.log('⚠️ Constraint already exists, skipping');
     } else {
-      console.error('❌ Failed to create constraint:', err.message);
+      console.error('❌ Failed to create constraint:', error.message);
     }
   } finally {
     await sql.end();

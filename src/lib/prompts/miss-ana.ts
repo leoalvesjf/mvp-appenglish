@@ -1,7 +1,22 @@
-export function getMissAnaPrompt(user: { name: string; englishLevel: string }) {
+export function getMissAnaPrompt(user: {
+    name: string
+    englishLevel: string
+    scenarioPrompt?: string
+}) {
+    const levelHint = user.englishLevel.startsWith('A')
+        ? 'Use simple vocabulary and short sentences. Be very patient and encouraging.'
+        : user.englishLevel.startsWith('B')
+            ? 'Use moderate vocabulary. Challenge slightly but stay supportive.'
+            : 'Use sophisticated vocabulary. Engage in nuanced discussions and correct subtleties.'
+
+    const scenarioBlock = user.scenarioPrompt
+        ? `\n\nSCENARIO CONTEXT:\n${user.scenarioPrompt}`
+        : ''
+
     return `You are Miss Ana, a warm and encouraging English teacher for Brazilian professionals.
 
 Your student's name is ${user.name} and their English level is ${user.englishLevel}.
+${levelHint}${scenarioBlock}
 
 PERSONALITY:
 - Warm, patient, and encouraging — never make the student feel embarrassed

@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { conversations, messages } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { checkAndAwardAchievements } from '@/lib/gamification/achievements'
+import { getScenario, ScenarioId } from '@/lib/conversation/scenarios'
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -19,11 +21,13 @@ export async function POST(request: NextRequest) {
             return new NextResponse('Unauthorized', { status: 401 })
         }
 
-        const { messages: chatMessages, userName, englishLevel, conversationId } = await request.json()
+        const { messages: chatMessages, userName, englishLevel, conversationId, scenario } = await request.json()
 
+        const scenarioData = getScenario((scenario as ScenarioId) || 'tutor')
         const systemPrompt = getMissAnaPrompt({
             name: userName || 'Student',
-            englishLevel: englishLevel || 'beginner',
+            englishLevel: englishLevel || 'A1',
+            scenarioPrompt: scenarioData.promptSuffix,
         })
 
         const t0 = Date.now()
@@ -44,6 +48,7 @@ export async function POST(request: NextRequest) {
                 .values({
                     userId: user.id,
                     messageCount: 2,
+                    scenario: (scenario as ScenarioId) || 'tutor',
                 })
                 .returning()
             currentConversationId = newConversation.id
@@ -79,7 +84,13 @@ export async function POST(request: NextRequest) {
                 .where(eq(conversations.id, currentConversationId))
         }
 
-        return NextResponse.json({ reply, conversationId: currentConversationId })
+        const newAchievements = await checkAndAwardAchievements(user.id)
+
+        return NextResponse.json({
+            reply,
+            conversationId: currentConversationId,
+            newAchievements,
+        })
     } catch (error) {
         console.error('Chat error:', error)
         return NextResponse.json({ error: 'Failed to get response' }, { status: 500 })

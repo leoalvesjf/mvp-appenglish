@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { userProgress, userLessonProgress } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { resetDailyMissionsIfNeeded, updateMissionProgress } from '@/lib/gamification/missions'
+import { checkAndAwardAchievements } from '@/lib/gamification/achievements'
 
 export async function POST(req: Request) {
     try {
@@ -64,7 +66,15 @@ export async function POST(req: Request) {
                 }
             })
 
-        return NextResponse.json({ success: true })
+        await resetDailyMissionsIfNeeded(user.id)
+        await updateMissionProgress(user.id, 'lesson', 1)
+
+        const newAchievements = await checkAndAwardAchievements(user.id)
+
+        return NextResponse.json({
+            success: true,
+            newAchievements,
+        })
     } catch (error) {
         console.error('Error completing lesson:', error)
         return new NextResponse('Internal Server Error', { status: 500 })

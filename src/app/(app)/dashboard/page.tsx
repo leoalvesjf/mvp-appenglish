@@ -1,10 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { userProgress, users } from '@/lib/db/schema'
+import { userProgress } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import Link from 'next/link'
 import { Flame, Star, Activity, GraduationCap, ArrowRight, Award } from 'lucide-react'
+import { DailyMissions, AchievementsGrid } from '@/components/gamification'
+import {
+    LEVEL_INFO,
+    getCurrentLevel,
+    getProgressInLevel,
+    getXpToNextLevel,
+    getNextLevel,
+} from '@/lib/gamification/levels'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -18,32 +26,14 @@ export default async function DashboardPage() {
         where: eq(userProgress.userId, user.id)
     })
 
-    const userData = await db.query.users.findFirst({
-        where: eq(users.id, user.id)
-    })
-
-    const englishLevel = userData?.englishLevel || 'beginner'
-    const streak = progress?.currentStreak || 0
     const totalXp = progress?.totalXp || 0
-    const totalConversations = progress?.totalConversations || 0
-
-    const getLevelLabel = (level: string) => {
-        const labels: Record<string, string> = {
-            beginner: 'Beginner',
-            intermediate: 'Intermediate',
-            advanced: 'Advanced'
-        }
-        return labels[level] || 'Beginner'
-    }
-
-    const getLevelColor = (level: string) => {
-        const colors: Record<string, string> = {
-            beginner: 'text-green-400',
-            intermediate: 'text-yellow-400',
-            advanced: 'text-primary'
-        }
-        return colors[level] || 'text-green-400'
-    }
+    const currentLevel = getCurrentLevel(totalXp)
+    const levelInfo = LEVEL_INFO[currentLevel]
+    const levelProgress = getProgressInLevel(totalXp)
+    const xpToNext = getXpToNextLevel(totalXp)
+    const nextLevel = getNextLevel(currentLevel)
+    const streak = progress?.currentStreak || 0
+    const unlockedAchievements = (progress?.achievements as string[]) || []
 
     return (
         <div className="p-6 space-y-8">
@@ -54,9 +44,9 @@ export default async function DashboardPage() {
                         Hello, {firstName}
                     </h1>
                     <div className="flex items-center gap-2 mt-1">
-                        <Award className={`w-4 h-4 ${getLevelColor(englishLevel)}`} />
-                        <span className={`text-sm font-medium ${getLevelColor(englishLevel)}`}>
-                            {getLevelLabel(englishLevel)}
+                        <Award className={`w-4 h-4 ${levelInfo.color}`} />
+                        <span className={`text-sm font-medium ${levelInfo.color}`}>
+                            {levelInfo.label}
                         </span>
                         <Link href="/placement-test" className="text-white/40 hover:text-white text-xs">
                             (Retest)
@@ -67,6 +57,29 @@ export default async function DashboardPage() {
                     {firstName[0].toUpperCase()}
                 </div>
             </header>
+
+            {/* Level Progress */}
+            <div className="glass-card rounded-3xl p-6">
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-2">
+                        <Award className={`w-5 h-5 ${levelInfo.color}`} />
+                        <span className={`font-semibold ${levelInfo.color}`}>{levelInfo.label}</span>
+                    </div>
+                    <span className="text-xs text-white/40">
+                        {nextLevel ? `Next: ${nextLevel}` : 'Max Level!'}
+                    </span>
+                </div>
+                <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden mb-2">
+                    <div
+                        className={`h-full bg-gradient-to-r ${levelInfo.color} to-accent rounded-full transition-all`}
+                        style={{ width: `${levelProgress}%` }}
+                    />
+                </div>
+                <div className="flex justify-between text-xs text-white/40">
+                    <span>{Math.floor(totalXp)} XP total</span>
+                    <span>{nextLevel ? `${xpToNext} XP to ${nextLevel}` : 'C2 Proficiency'}</span>
+                </div>
+            </div>
 
             {/* Stats Row */}
             <div className="grid grid-cols-2 gap-4">
@@ -90,7 +103,7 @@ export default async function DashboardPage() {
                             <Star className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-sm text-white/60">Total XP</p>
+                            <p className="text-sm text-white/60">Level XP</p>
                             <p className="text-2xl font-bold text-white">{totalXp}</p>
                         </div>
                     </div>
@@ -170,6 +183,12 @@ export default async function DashboardPage() {
                     ))}
                 </div>
             </div>
+
+            {/* Daily Missions */}
+            <DailyMissions userId={user.id} />
+
+            {/* Achievements */}
+            <AchievementsGrid unlockedIds={unlockedAchievements} />
         </div>
     )
 }

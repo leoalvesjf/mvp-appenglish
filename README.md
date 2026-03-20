@@ -19,6 +19,7 @@ O usuário fala em inglês pelo microfone, a Miss Ana (IA) ouve, responde em ing
 | STT | OpenAI Whisper (`whisper-1`) |
 | TTS | OpenAI TTS (`tts-1`, voz `nova`) |
 | Deploy | Vercel |
+| Testes | Vitest |
 
 ## Estrutura
 
@@ -27,26 +28,32 @@ src/
 ├── app/
 │   ├── (auth)/login, register
 │   ├── (app)/dashboard, lessons, conversation, conversations, vocabulary, profile, placement-test
-│   ├── api/chat, transcribe, speak, lessons/complete, vocabulary, placement-test
+│   ├── api/chat, transcribe, speak, lessons/complete, vocabulary, placement-test, achievements, daily-missions
 │   └── page.tsx (Landing)
 ├── lib/
-│   ├── supabase/, db/, prompts/
-│   └── proxy.ts
+│   ├── supabase/
+│   ├── db/
+│   ├── prompts/
+│   ├── gamification/{levels, missions, achievements, definitions}.ts
+│   └── utils.ts
+└── __tests__/ (test files next to source)
 ```
 
 ## Banco de Dados
 
 ### Tabelas
 
-- **users** - Usuários cadastrados
-- **lessons** - Lições do learning path
-- **user_progress** - Progresso (XP, streak, conversas)
-- **user_lesson_progress** - Lições completadas por usuário
-- **user_vocabulary** - Vocabulário errado + correção
-- **placement_questions** - Perguntas do teste de nível
-- **conversations** / **messages** - Histórico de conversas
-- **daily_missions** - Missões diárias (TODO)
-- **user_achievements** - Conquistas desbloqueadas (TODO)
+| Tabela | Descrição |
+|--------|-----------|
+| users | Usuários cadastrados |
+| lessons | Lições do learning path |
+| user_progress | Progresso (XP, streak, conversas, missões, conquistas) |
+| user_lesson_progress | Lições completadas por usuário |
+| user_vocabulary | Vocabulário errado + correção + explicação |
+| placement_questions | Perguntas do teste de nível |
+| conversations | Histórico de conversas |
+| daily_missions | Missões diárias disponíveis |
+| daily_missions_log | Registro de missões completadas |
 
 ### Triggers
 
@@ -54,66 +61,62 @@ src/
 
 ---
 
-## Funcionalidades
+## Funcionalidades Implementadas
 
-### Learning Path
+### Learning Path ✅
 - Lições ordenadas por `order`
 - Usuário só acessa se completou a anterior
 - Ao completar: XP + próxima lição desbloqueada
+- 3 tipos de exercício: multiple choice, fill in blank, drag and drop
 
-### Vocabulário
+### Vocabulário ✅
 - Salva palavras erradas + correção + explicação
--Disponível em `/vocabulary`
+- Disponível em `/vocabulary`
+- Revisável a qualquer momento
 
-### Teste de Nível
-- 10 questões aleatórias (15 no banco)
-- Níveis: Beginner (<50%), Intermediate (50-79%), Advanced (≥80%)
+### Teste de Nível ✅
+- 15 questões no banco (10 selecionadas aleatoriamente)
+- Níveis: A1, A2, B1, B2, C1, C2 baseados em percentil
 
-### Conversas
+### Conversas ✅
 - Salva texto no banco (sem áudio)
 - Histórico em `/conversations`
+- Cenários configuráveis em `/lib/conversation/scenarios.ts`
 
-### Autenticação
+### Autenticação ✅
 - Login/Register com Supabase Auth
-- Redirect automático
+- Redirect automático para dashboard
 - Logout em `/profile`
 
-### Landing Page
-- Página pública com CTA
+### Landing Page ✅
+- Página pública com CTA para login/register
 
----
+### Sistema de Gamificação ✅
 
-## Sistema de Gamificação (Em desenvolvimento)
+#### XP e Níveis
+```
+Cada nível = 500 XP
+A1 → A2 → B1 → B2 → C1 → C2
+Progresso granular dentro de cada nível
+```
 
-### Missões Diárias
-3 missões por dia que resettam às midnight:
-- Complete 1 lesson
-- Practice 5 min with Miss Ana
-- Review vocabulary
+#### Missões Diárias ✅
+3 missões por dia que resetam à meia-noite:
+- Complete 1 lesson (1x, +20 XP)
+- Practice speaking (5x, +30 XP)
+- Review vocabulary (10x, +15 XP)
 
-**Bônus:** XP extra ao completar todas
+**Bônus:** +50 XP ao completar todas
 
-### Níveis Granulares
-Cada nível = 500 XP:
-- Beginner A1 → A2
-- Intermediate B1 → B2
-- Advanced C1 → C2
-
-Mais feedback visual de progresso.
-
-### Achievements (Conquistas)
-| Achievement | Condição |
-|-------------|----------|
-| 🌟 Primeira Lição | Complete first lesson |
-| 🔥 7 Dias de Streak | 7-day streak |
-| 📚 100 Palavras | 100 vocabulary words |
-| 🗣️ Primeira Conversa | First voice conversation |
-| 🏆 Todas as Lições | Complete all lessons of a level |
-| ⭐ Primeira Semana | 7 days on platform |
-
-### Daily Goal
-- Meta padrão: 10 minutos/dia
-- Barra de progresso no dashboard
+#### Achievements (Conquistas) ✅
+| Achievement | Condição | XP |
+|-------------|----------|-----|
+| 🌟 Primeira Lição | Complete first lesson | 50 |
+| 🔥 7 Dias de Streak | 7-day streak | 100 |
+| 📚 100 Palavras | 100 vocabulary words | 75 |
+| 🗣️ Primeira Conversa | First voice conversation | 50 |
+| 🏆 Todas as Lições | Complete all lessons of a level | 150 |
+| ⭐ Primeira Semana | 7 days on platform | 100 |
 
 ---
 
@@ -128,6 +131,35 @@ Usuário fala → Whisper → Claude Haiku → TTS → Miss Ana responde
 - **Sem armazenar áudios** no Supabase
 - **Texto salvo no banco**
 - **Áudio gerado sob demanda**
+
+---
+
+## Testes ✅
+
+### Framework
+- **Vitest** - Test runner rápido e leve
+- **44 testes unitários** cobrindo lógica crítica
+
+### Cobertura
+
+| Módulo | Testes | Descrição |
+|--------|--------|-----------|
+| `levels.ts` | 25 | getLevelFromScore, getXpInLevel, getLevelFromTotalXp, getCurrentLevel, getXpToNextLevel, getProgressInLevel, getNextLevel, getLevelCategory |
+| `definitions.ts` | 13 | ACHIEVEMENTS, DEFAULT_MISSIONS, validação de estruturas |
+| `utils.ts` | 6 | cn() - merge de classes Tailwind |
+
+### Rodando os testes
+
+```bash
+pnpm test        # modo watch
+pnpm test:run    # uma execução
+```
+
+### Próximos testes a implementar
+- [ ] Testes para missions.ts (getDailyMissions, updateMissionProgress)
+- [ ] Testes para achievements.ts (checkAndAwardAchievements)
+- [ ] Testes de integração para APIs
+- [ ] Testes E2E com Playwright
 
 ---
 
@@ -147,6 +179,9 @@ OPENAI_API_KEY=
 ```bash
 pnpm install
 pnpm dev
+pnpm test:run    # rodar testes
+pnpm lint        # verificar código
+pnpm build       # build de produção
 ```
 
 ---
@@ -156,7 +191,7 @@ pnpm dev
 ### Feito ✅
 - [x] Login/Register com Supabase Auth
 - [x] Redirect automático
-- [x] Dashboard com stats (XP, streak, nível)
+- [x] Dashboard com stats (XP, streak, nível, missões)
 - [x] Learning Path com progresso
 - [x] Exercícios (multiple choice, fill in blank, drag and drop)
 - [x] Sistema de vocabulário
@@ -165,17 +200,27 @@ pnpm dev
 - [x] Histórico de conversas
 - [x] Logout
 - [x] Landing page com CTA
+- [x] Missões diárias (back-end completo)
+- [x] Achievements/Conquistas (back-end completo)
+- [x] Sistema de XP granular
+- [x] Cenários de conversa configuráveis
+- [x] Testes unitários (Vitest)
+- [x] Correções de lint e type safety
 
 ### Em desenvolvimento 🚧
-- [ ] Missões diárias
-- [ ] Achievements
-- [ ] Daily goal com progresso
+- [ ] Cenários de conversa (GUI para selecionar)
+- [ ] Daily goal com progresso visual
+- [ ] Streaming TTS (latência reduzida)
 
 ### A fazer 📋
-- Cenários de conversa (restaurante, entrevista, hotel)
-- Sistema de SRS para vocabulário
-- Streaming TTS
-- PWA
+- [ ] Sistema de SRS para vocabulário (Spaced Repetition)
+- [ ] PWA (offline support)
+- [ ] Notificações push
+- [ ] Dashboard analítico (pronúncia, palavras por nível)
+- [ ] Modo escuro
+- [ ] Testes E2E com Playwright
+- [ ] Testes de integração
+- [ ] CI/CD pipeline
 
 ---
 
@@ -189,3 +234,6 @@ Mais rápido e barato que GPT-4o para conversação simples.
 
 **Por que Drizzle ORM?**
 Leve, type-safe, funciona bem com Next.js Server Components.
+
+**Por que Vitest?**
+Compatível com Jest API, mais rápido, excelente suporte TypeScript.

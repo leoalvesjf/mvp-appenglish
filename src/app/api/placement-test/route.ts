@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { EnglishLevel } from '@/lib/gamification/levels'
 
 export async function POST(req: Request) {
     try {

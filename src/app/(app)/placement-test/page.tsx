@@ -11,5 +11,5 @@ export default async function PlacementTestPage() {
         .orderBy(sql`RANDOM()`)
         .limit(10)
     
-    return <PlacementTestClient questions={shuffled} />
+    return <PlacementTestClient questions={shuffled.map(q => ({ ...q, options: q.options as unknown[] }))} />
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, Trophy, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EnglishLevel, LEVEL_INFO, getLevelFromScore, getNextLevel } from '@/lib/gamification/levels'
 
 type Question = {
     id: number
@@ -22,7 +23,7 @@ export default function PlacementTestClient({ questions }: { questions: Question
     const [checked, setChecked] = useState(false)
     const [answers, setAnswers] = useState<string[]>([])
     const [finished, setFinished] = useState(false)
-    const [result, setResult] = useState<{ level: string; score: number } | null>(null)
+    const [result, setResult] = useState<{ level: EnglishLevel; score: number } | null>(null)
 
     const question = questions[current]
     const progress = questions.length > 0 ? ((current + 1) / questions.length) * 100 : 0
@@ -41,16 +42,7 @@ export default function PlacementTestClient({ questions }: { questions: Question
             const score = answers.filter((a, i) => a === questions[i].correctAnswer).length + (selected === question.correctAnswer ? 1 : 0)
             const totalAnswers = answers.length + 1
             
-            let level = 'beginner'
-            const percentage = (score / totalAnswers) * 100
-            
-            if (percentage >= 80) {
-                level = 'advanced'
-            } else if (percentage >= 50) {
-                level = 'intermediate'
-            } else {
-                level = 'beginner'
-            }
+            const level = getLevelFromScore(score, totalAnswers)
 
             await fetch('/api/placement-test', {
                 method: 'POST',
@@ -68,23 +60,8 @@ export default function PlacementTestClient({ questions }: { questions: Question
         setChecked(false)
     }
 
-    const getLevelLabel = (lvl: string) => {
-        const labels: Record<string, string> = {
-            beginner: 'Beginner (A1-A2)',
-            intermediate: 'Intermediate (B1-B2)',
-            advanced: 'Advanced (C1-C2)'
-        }
-        return labels[lvl] || lvl
-    }
-
-    const getLevelColor = (lvl: string) => {
-        const colors: Record<string, string> = {
-            beginner: 'text-green-400 bg-green-500/20 border-green-500/30',
-            intermediate: 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30',
-            advanced: 'text-primary bg-primary/20 border-primary/30'
-        }
-        return colors[lvl] || 'text-white bg-white/20'
-    }
+    const getLevelLabel = (lvl: EnglishLevel) => LEVEL_INFO[lvl].label
+    const getLevelColor = (lvl: EnglishLevel) => `${LEVEL_INFO[lvl].color} ${LEVEL_INFO[lvl].bgColor} ${LEVEL_INFO[lvl].borderColor}`
 
     if (finished && result) {
         return (
@@ -100,12 +77,23 @@ export default function PlacementTestClient({ questions }: { questions: Question
                 <p className="text-white/50 mb-6">{result.score}/{questions.length} correct answers</p>
                 
                 <div className={cn(
-                    'glass-card rounded-3xl p-6 mb-8 border-2',
+                    'glass-card rounded-3xl p-6 mb-6 border-2',
                     getLevelColor(result.level)
                 )}>
                     <div className="text-sm text-white/60 mb-1">Your Level</div>
                     <div className="text-3xl font-bold">{getLevelLabel(result.level)}</div>
+                    <p className="text-white/50 text-sm mt-2">{LEVEL_INFO[result.level].description}</p>
                 </div>
+
+                {getNextLevel(result.level) && (
+                    <div className="glass-card rounded-3xl p-4 mb-8 border border-white/10">
+                        <p className="text-sm text-white/50 mb-1">Next level</p>
+                        <div className="text-lg font-semibold text-white">
+                            {getLevelLabel(getNextLevel(result.level)!)}
+                        </div>
+                        <p className="text-white/40 text-xs mt-1">Earn {500} XP to advance</p>
+                    </div>
+                )}
 
                 <button
                     onClick={() => router.push('/lessons')}
