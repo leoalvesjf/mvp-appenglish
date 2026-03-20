@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Brain, Loader2 } from 'lucide-react'
@@ -10,53 +9,57 @@ export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(false)
     const router = useRouter()
-    const supabase = createClient()
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user) {
-                router.push('/dashboard')
-            } else {
-                setLoading(false)
-            }
-        })
-    }, [router, supabase])
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            </div>
-        )
-    }
+        const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))
+        if (token) {
+            router.push('/dashboard')
+        }
+    }, [router])
 
     const handleLogin = async () => {
-        setLoading(true)
-        setError('')
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) {
-            setError(error.message)
-            setLoading(false)
+        if (!email || !password) {
+            setError('Please fill in all fields')
             return
         }
-        router.push('/dashboard')
-        router.refresh()
+
+        setLoading(true)
+        setError('')
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                setError(data.error || 'Login failed')
+                setLoading(false)
+                return
+            }
+
+            router.push('/dashboard')
+            router.refresh()
+        } catch {
+            setError('An error occurred. Please try again.')
+        }
+
+        setLoading(false)
     }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-
-            {/* Background glow */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
                 <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[100px]" />
             </div>
 
             <div className="w-full max-w-md z-10 border border-white/10 bg-black/40 backdrop-blur-xl rounded-3xl p-8">
-
-                {/* Header */}
                 <div className="text-center space-y-4 mb-8">
                     <div className="flex justify-center">
                         <div className="p-3 bg-primary/10 rounded-2xl border border-primary/20">
@@ -74,12 +77,11 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                    <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-xl mb-4 text-sm">
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl mb-4 text-sm">
                         {error}
                     </div>
                 )}
 
-                {/* Form */}
                 <div className="space-y-3">
                     <input
                         type="email"
@@ -106,12 +108,8 @@ export default function LoginPage() {
                     </button>
                 </div>
 
-                {/* Footer links */}
-                <div className="flex justify-between text-sm text-white/40 mt-6">
-                    <Link href="/forgot-password" className="hover:text-primary transition-colors">
-                        Forgot password?
-                    </Link>
-                    <Link href="/register" className="hover:text-primary transition-colors">
+                <div className="flex justify-center mt-6">
+                    <Link href="/register" className="text-sm text-white/40 hover:text-primary transition-colors">
                         Create an account
                     </Link>
                 </div>

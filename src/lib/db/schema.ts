@@ -1,5 +1,17 @@
 import { pgTable, uuid, text, timestamp, integer, serial, boolean, json } from 'drizzle-orm/pg-core'
 
+export const authUsers = pgTable('auth_users', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: text('email').notNull().unique(),
+    name: text('name'),
+    phone: text('phone'),
+    passwordHash: text('password_hash').notNull(),
+    emailVerified: boolean('email_verified').default(false),
+    emailToken: text('email_token'),
+    emailTokenExpires: timestamp('email_token_expires'),
+    createdAt: timestamp('created_at').defaultNow(),
+})
+
 export const users = pgTable('users', {
     id: uuid('id').primaryKey(),
     email: text('email').notNull(),
@@ -8,9 +20,17 @@ export const users = pgTable('users', {
     createdAt: timestamp('created_at').defaultNow(),
 })
 
+export const sessions = pgTable('sessions', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => authUsers.id).notNull(),
+    token: text('token').notNull().unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+})
+
 export const conversations = pgTable('conversations', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id),
+    userId: uuid('user_id').references(() => authUsers.id),
     startedAt: timestamp('started_at').defaultNow(),
     endedAt: timestamp('ended_at'),
     messageCount: integer('message_count').default(0),
@@ -27,7 +47,7 @@ export const messages = pgTable('messages', {
 
 export const userProgress = pgTable('user_progress', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id).unique(),
+    userId: uuid('user_id').references(() => authUsers.id).unique(),
     totalConversations: integer('total_conversations').default(0),
     totalMinutes: integer('total_minutes').default(0),
     currentStreak: integer('current_streak').default(0),
@@ -54,7 +74,7 @@ export const dailyMissions = pgTable('daily_missions', {
 
 export const userLessonProgress = pgTable('user_lesson_progress', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id).notNull(),
+    userId: uuid('user_id').references(() => authUsers.id).notNull(),
     lessonId: integer('lesson_id').references(() => lessons.id).notNull(),
     status: text('status').default('in_progress'),
     score: integer('score').default(0),
@@ -64,7 +84,7 @@ export const userLessonProgress = pgTable('user_lesson_progress', {
 
 export const userVocabulary = pgTable('user_vocabulary', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id).notNull(),
+    userId: uuid('user_id').references(() => authUsers.id).notNull(),
     word: text('word').notNull(),
     correction: text('correction').notNull(),
     explanation: text('explanation'),
