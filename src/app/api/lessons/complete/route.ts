@@ -19,14 +19,19 @@ export async function POST(req: Request) {
             return new NextResponse('Missing lessonId', { status: 400 })
         }
 
+        // Assume 5 minutes per lesson
+        const lessonMinutes = 5
+        
         await db.insert(userProgress)
             .values({
                 userId: user.id,
                 totalXp: xpReward,
                 todayXp: xpReward,
                 totalConversations: 0,
-                totalMinutes: 0,
-                currentStreak: 0,
+                totalMinutes: lessonMinutes,
+                currentStreak: 1,
+                todayMinutes: lessonMinutes,
+                lastActivityDate: new Date(),
                 lastSessionAt: new Date(),
             })
             .onConflictDoUpdate({
@@ -34,6 +39,9 @@ export async function POST(req: Request) {
                 set: {
                     totalXp: sql`${userProgress.totalXp} + ${xpReward}`,
                     todayXp: sql`${userProgress.todayXp} + ${xpReward}`,
+                    totalMinutes: sql`${userProgress.totalMinutes} + ${lessonMinutes}`,
+                    todayMinutes: sql`${userProgress.todayMinutes} + ${lessonMinutes}`,
+                    lastActivityDate: new Date(),
                     lastSessionAt: new Date(),
                     updatedAt: new Date(),
                 }

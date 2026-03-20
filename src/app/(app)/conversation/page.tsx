@@ -123,7 +123,15 @@ export default function ConversationPage() {
             source.buffer = decoded
             source.connect(audioCtx.destination)
             source.start()
-            source.onended = () => setIsProcessing(false)
+            source.onended = () => {
+                setIsProcessing(false)
+                // Track time spent
+                fetch('/api/track-time', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ minutes: 1 })
+                }).catch(console.error)
+            }
 
         } else {
             if (audioRef.current) audioRef.current.pause()
