@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { userProgress, userLessonProgress } from '@/lib/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, and } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { resetDailyMissionsIfNeeded, updateMissionProgress } from '@/lib/gamification/missions'
 import { checkAndAwardAchievements } from '@/lib/gamification/achievements'
@@ -21,9 +21,41 @@ export async function POST(req: Request) {
             return new NextResponse('Missing lessonId', { status: 400 })
         }
 
-        // Assume 5 minutes per lesson
+        const existingLessonProgress = await db.query.userLessonProgress.findFirst({
+            where: and(
+                eq(userLessonProgress.userId, user.id),
+                eq(userLessonProgress.lessonId, lessonId)
+            )
+        })
+
+        if (existingLessonProgress?.status === 'completed') {
+            return NextResponse.json({
+                success: true,
+                newAchievements: [],
+                xpEarned: 0,
+                message: 'Lesson already completed',
+            })
+        }
+
+        await db.insert(userLessonProgress)
+            .values({
+                userId: user.id,
+                lessonId: lessonId,
+                status: 'completed',
+                score: score || 0,
+                completedAt: new Date(),
+            })
+            .onConflictDoUpdate({
+                target: [userLessonProgress.userId, userLessonProgress.lessonId],
+                set: {
+                    status: 'completed',
+                    score: score || 0,
+                    completedAt: new Date(),
+                }
+            })
+
         const lessonMinutes = 5
-        
+
         await db.insert(userProgress)
             .values({
                 userId: user.id,
@@ -49,23 +81,6 @@ export async function POST(req: Request) {
                 }
             })
 
-        await db.insert(userLessonProgress)
-            .values({
-                userId: user.id,
-                lessonId: lessonId,
-                status: 'completed',
-                score: score || 0,
-                completedAt: new Date(),
-            })
-            .onConflictDoUpdate({
-                target: [userLessonProgress.userId, userLessonProgress.lessonId],
-                set: {
-                    status: 'completed',
-                    score: score || 0,
-                    completedAt: new Date(),
-                }
-            })
-
         await resetDailyMissionsIfNeeded(user.id)
         await updateMissionProgress(user.id, 'lesson', 1)
 
@@ -74,6 +89,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
             success: true,
             newAchievements,
+            xpEarned: xpReward,
         })
     } catch (error) {
         console.error('Error completing lesson:', error)
