@@ -47,7 +47,7 @@ export default async function DashboardPage() {
                         <div>
                             <p className="text-sm text-white/60">Streak</p>
                             <p className="text-2xl font-bold text-white">
-                                0 <span className="text-base font-normal text-white/40">days</span>
+                                {streak} <span className="text-base font-normal text-white/40">days</span>
                             </p>
                         </div>
                     </div>
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
                         </div>
                         <div>
                             <p className="text-sm text-white/60">Total XP</p>
-                            <p className="text-2xl font-bold text-white">0</p>
+                            <p className="text-2xl font-bold text-white">{totalXp}</p>
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, integer, serial, boolean, json } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
     id: uuid('id').primaryKey(),
@@ -26,7 +26,7 @@ export const messages = pgTable('messages', {
 
 export const userProgress = pgTable('user_progress', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id),
+    userId: uuid('user_id').references(() => users.id).unique(),
     totalConversations: integer('total_conversations').default(0),
     totalMinutes: integer('total_minutes').default(0),
     currentStreak: integer('current_streak').default(0),
@@ -34,4 +34,29 @@ export const userProgress = pgTable('user_progress', {
     todayXp: integer('today_xp').default(0),
     lastSessionAt: timestamp('last_session_at'),
     updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const userLessonProgress = pgTable('user_lesson_progress', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id).notNull(),
+    lessonId: integer('lesson_id').references(() => lessons.id).notNull(),
+    status: text('status').default('in_progress'),
+    score: integer('score').default(0),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+})
+
+export const lessons = pgTable('lessons', {
+    id: serial('id').primaryKey(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    level: text('level').notNull(),
+    category: text('category').notNull(),
+    xpReward: integer('xp_reward').default(50),
+    durationMinutes: integer('duration_minutes').default(10),
+    isLocked: boolean('is_locked').default(false),
+    order: integer('order').default(0),
+    icon: text('icon').default('📚'),
+    exercises: json('exercises').default([]),
+    vocabulary: json('vocabulary').default([]),
 })
