@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         })
 
         const lastDate = progress?.lastActivityDate 
-            ? new Date(progress.lastActivityDate).toISOString().split('T')[0] 
+            ? (() => { const d = new Date(progress.lastActivityDate); return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0] })()
             : null
 
         let newStreak = progress?.currentStreak || 0
