@@ -26,7 +26,7 @@ export async function getDailyMissions(userId: string): Promise<UserMission[]> {
         }))
     }
 
-    const saved: UserMission[] = (progress?.dailyMissions as UserMission[]) || []
+    const saved: UserMission[] = (progress?.dailyMissions as unknown as UserMission[]) || []
     if (saved.length === 0) {
         return [
             { type: 'lesson', title: 'Complete a Lesson', description: 'Finish one lesson from the learning path', target: 1, xpReward: 20, current: 0, completed: false },
