@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 const SESSION_DURATION_DAYS = 7
@@ -204,6 +205,63 @@ export async function resendConfirmation(email: string) {
         .set({
             emailToken,
             emailTokenExpires,
+        })
+        .where(eq(authUsers.id, user.id))
+
+    return { success: true }
+}
+
+export async function forgotPassword(email: string) {
+    const user = await db.query.authUsers.findFirst({
+        where: eq(authUsers.email, email.toLowerCase())
+    })
+
+    if (!user) {
+        return { error: 'Email not found' }
+    }
+
+    const resetToken = generateToken()
+    const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000)
+
+    await db.update(authUsers)
+        .set({
+            emailToken: resetToken,
+            emailTokenExpires: resetTokenExpires,
+        })
+        .where(eq(authUsers.id, user.id))
+
+    try {
+        await sendPasswordResetEmail({
+            to: user.email,
+            resetToken,
+        })
+    } catch (emailError) {
+        console.error('Failed to send reset email:', emailError)
+    }
+
+    return { success: true, resetToken }
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+    const user = await db.query.authUsers.findFirst({
+        where: eq(authUsers.emailToken, token)
+    })
+
+    if (!user) {
+        return { error: 'Invalid or expired token' }
+    }
+
+    if (user.emailTokenExpires && new Date(user.emailTokenExpires) < new Date()) {
+        return { error: 'Token expired' }
+    }
+
+    const passwordHash = await hashPassword(newPassword)
+
+    await db.update(authUsers)
+        .set({
+            passwordHash,
+            emailToken: null,
+            emailTokenExpires: null,
         })
         .where(eq(authUsers.id, user.id))
 

@@ -110,9 +110,12 @@ export default function LoginPage() {
                     </button>
                 </div>
 
-                <div className="flex justify-center mt-6">
-                    <Link href="/register" className="text-sm text-white/40 hover:text-primary transition-colors">
+                <div className="flex justify-between items-center mt-6 text-sm">
+                    <Link href="/register" className="text-white/40 hover:text-primary transition-colors">
                         Create an account
+                    </Link>
+                    <Link href="/forgot-password" className="text-white/40 hover:text-primary transition-colors">
+                        Forgot password?
                     </Link>
                 </div>
             </div>
