@@ -26,7 +26,7 @@ export async function getDailyMissions(userId: string): Promise<UserMission[]> {
         }))
     }
 
-    const saved: UserMission[] = (progress?.dailyMissions as unknown as UserMission[]) || []
+    const saved: UserMission[] = (progress?.dailyMissions || []).map(m => typeof m === 'string' ? JSON.parse(m) : m)
     if (saved.length === 0) {
         return [
             { type: 'lesson', title: 'Complete a Lesson', description: 'Finish one lesson from the learning path', target: 1, xpReward: 20, current: 0, completed: false },
@@ -55,7 +55,7 @@ export async function updateMissionProgress(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const setObj: Record<string, any> = {
-        dailyMissions: missions,
+        dailyMissions: missions.map(m => JSON.stringify(m)),
         missionsCompletedAt: allCompleted ? new Date() : null,
     }
     if (bonusXp > 0) {
@@ -95,7 +95,7 @@ export async function resetDailyMissionsIfNeeded(userId: string): Promise<void> 
 
         await db.update(userProgress)
             .set({
-                dailyMissions: fresh,
+                dailyMissions: fresh.map(m => JSON.stringify(m)),
                 missionsCompletedAt: null,
             })
             .where(eq(userProgress.userId, userId))
