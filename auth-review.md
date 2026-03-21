@@ -1,5 +1,128 @@
+# Auth Flow Review
+
+## src/app/api/auth/register/route.ts
+```typescript
+import { NextResponse } from 'next/server'
+import { register } from '@/lib/auth'
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit'
+
+export async function POST(req: Request) {
+    try {
+        const ip = getClientIP(req)
+        if (!checkRateLimit(ip)) {
+            return NextResponse.json(
+                { error: 'Too many attempts. Please try again later.' },
+                { status: 429 }
+            )
+        }
+
+        const { email, password, name, phone } = await req.json()
+
+        if (!email || !password || !name) {
+            return NextResponse.json(
+                { error: 'Email, password and name are required' },
+                { status: 400 }
+            )
+        }
+
+        if (password.length < 6) {
+            return NextResponse.json(
+                { error: 'Password must be at least 6 characters' },
+                { status: 400 }
+            )
+        }
+
+        const result = await register(email, password, name, phone)
+
+        if (result.error) {
+            return NextResponse.json(
+                { error: result.error },
+                { status: 400 }
+            )
+        }
+
+        if (!result.user || !result.token) {
+            return NextResponse.json(
+                { error: 'Registration failed' },
+                { status: 500 }
+            )
+        }
+
+        return NextResponse.json({
+            success: true,
+            token: result.token,
+            user: { id: result.user.id, email: result.user.email, name: result.user.name },
+        })
+    } catch (error) {
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        )
+    }
+}
+```
+
+## src/app/api/auth/login/route.ts
+```typescript
+import { NextResponse } from 'next/server'
+import { login } from '@/lib/auth'
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit'
+
+export async function POST(req: Request) {
+    try {
+        const ip = getClientIP(req)
+        if (!checkRateLimit(ip)) {
+            return NextResponse.json(
+                { error: 'Too many attempts. Please try again later.' },
+                { status: 429 }
+            )
+        }
+
+        const { email, password } = await req.json()
+
+        if (!email || !password) {
+            return NextResponse.json(
+                { error: 'Email and password are required' },
+                { status: 400 }
+            )
+        }
+
+        const result = await login(email, password)
+
+        if (result.error) {
+            return NextResponse.json(
+                { error: result.error },
+                { status: 401 }
+            )
+        }
+
+        const response = NextResponse.json({
+            success: true,
+            user: result.user,
+        })
+
+        response.cookies.set('auth_token', result.token!, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60,
+            path: '/',
+        })
+
+        return response
+    } catch (error) {
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        )
+    }
+}
+```
+
+## src/lib/auth/index.ts
+```typescript
 import { db } from '@/lib/db'
-import { authUsers, users, userProgress } from '@/lib/db/schema'
+import { authUsers } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
@@ -65,27 +188,6 @@ export async function register(email: string, password: string, name: string, ph
             emailVerified: true,
         })
         .returning()
-
-    // Cria perfil do usuário
-    await db.insert(users)
-        .values({
-            id: user.id,
-            email: user.email,
-            name: user.name,
-        })
-        .onConflictDoNothing()
-
-    // Cria progresso inicial
-    await db.insert(userProgress)
-        .values({
-            userId: user.id,
-            totalXp: 0,
-            todayXp: 0,
-            currentStreak: 0,
-            totalConversations: 0,
-            totalMinutes: 0,
-        })
-        .onConflictDoNothing()
 
     const token = generateJWT(user.id)
     const cookieStore = await cookies()
@@ -209,3 +311,42 @@ export async function resendConfirmation(email: string) {
 
     return { success: true }
 }
+```
+
+## src/lib/auth/helpers.ts
+```typescript
+import { cookies } from 'next/headers'
+import { verifyJWT } from './index'
+import { db } from '@/lib/db'
+import { authUsers } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+
+export async function getAuthenticatedUserId(): Promise<string | null> {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('auth_token')?.value
+
+    if (!token) return null
+
+    const decoded = verifyJWT(token)
+    if (!decoded) return null
+
+    return decoded.userId
+}
+
+export async function getAuthenticatedUser() {
+    const userId = await getAuthenticatedUserId()
+    if (!userId) return null
+
+    const user = await db.query.authUsers.findFirst({
+        where: eq(authUsers.id, userId)
+    })
+
+    if (!user) return null
+
+    return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+    }
+}
+```

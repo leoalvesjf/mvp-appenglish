@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Brain, Loader2, ArrowLeft, Mail } from 'lucide-react'
+import { Brain, Loader2, ArrowLeft } from 'lucide-react'
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({ name: '', phone: '', email: '', password: '' })
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
-    const [success, setSuccess] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
@@ -52,47 +51,12 @@ export default function RegisterPage() {
                 return
             }
 
-            setSuccess(true)
+            router.push('/dashboard')
         } catch {
             setError('An error occurred. Please try again.')
         }
 
         setLoading(false)
-    }
-
-    if (success) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
-                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-[100px]" />
-                </div>
-
-                <div className="w-full max-w-md z-10 glass-card rounded-3xl p-8 text-center">
-                    <div className="flex justify-center mb-6">
-                        <div className="p-4 bg-green-500/20 rounded-full">
-                            <Mail className="w-12 h-12 text-green-400" />
-                        </div>
-                    </div>
-
-                    <h1 className="text-2xl font-bold mb-2">Check your email!</h1>
-                    <p className="text-white/50 mb-6">
-                        We sent a confirmation link to <strong className="text-white">{formData.email}</strong>
-                    </p>
-
-                    <div className="bg-white/5 rounded-xl p-4 mb-6 text-sm text-white/60">
-                        <p>Click the link in your email to activate your account.</p>
-                    </div>
-
-                    <button
-                        onClick={() => router.push('/login')}
-                        className="w-full py-3 border border-white/20 rounded-full hover:bg-white/5 transition-colors"
-                    >
-                        Back to Login
-                    </button>
-                </div>
-            </div>
-        )
     }
 
     return (

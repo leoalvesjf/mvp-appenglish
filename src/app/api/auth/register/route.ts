@@ -37,9 +37,17 @@ export async function POST(req: Request) {
             )
         }
 
+        if (!result.user || !result.token) {
+            return NextResponse.json(
+                { error: 'Registration failed' },
+                { status: 500 }
+            )
+        }
+
         return NextResponse.json({
             success: true,
-            message: 'Account created! Please check your email to verify your account.',
+            token: result.token,
+            user: { id: result.user.id, email: result.user.email, name: result.user.name },
         })
     } catch (error) {
         return NextResponse.json(

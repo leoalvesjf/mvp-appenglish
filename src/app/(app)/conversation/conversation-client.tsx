@@ -41,17 +41,23 @@ export default function ConversationClient({
     }, [messages])
 
     const startRecording = async () => {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-            ? 'audio/webm;codecs=opus' : 'audio/mp4'
-        const recorder = new MediaRecorder(stream, { mimeType })
-        mediaRecorderRef.current = recorder
-        chunksRef.current = []
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-        recorder.start(100)
-        setIsRecording(true)
-        setRecordingTime(0)
-        timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus' : 'audio/mp4'
+            const recorder = new MediaRecorder(stream, { mimeType })
+            mediaRecorderRef.current = recorder
+            chunksRef.current = []
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+            recorder.start(100)
+            setIsRecording(true)
+            setRecordingTime(0)
+            timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
+        } catch (error) {
+            console.error('Failed to start recording:', error)
+            // Show user-friendly error message
+            setMessages(prev => [...prev, { role: 'assistant', content: 'Microphone access is required for voice conversation. Please allow microphone permissions.' }])
+        }
     }
 
     const stopRecording = (): Promise<Blob> => {
@@ -75,70 +81,81 @@ export default function ConversationClient({
 
             const blob = await stopRecording()
 
-            // Optimistic message
             setMessages(prev => [...prev, { role: 'user', content: '...' }])
 
-            // STT
             const formData = new FormData()
-            formData.append('audio', blob, 'audio.webm')
-            const transcribeRes = await fetch('/api/transcribe', { method: 'POST', body: formData })
-            const { text } = await transcribeRes.json()
-
-            if (!text?.trim()) {
-                setMessages(prev => prev.slice(0, -1))
-                setIsProcessing(false)
-                return
+            const audioFileName = blob.type.includes('webm') ? 'audio.webm' : 
+                                  blob.type.includes('mp4') ? 'audio.mp4' : 'audio.webm'
+            formData.append('audio', blob, audioFileName)
+            formData.append('scenario', scenario)
+            formData.append('userName', 'Student')
+            formData.append('englishLevel', englishLevel)
+            if (conversationId) {
+                formData.append('conversationId', conversationId)
             }
-
-            // Update user message
-            setMessages(prev => {
-                const updated = [...prev]
-                updated[updated.length - 1] = { role: 'user', content: text }
-                return updated
-            })
-
-            // Chat
             const history = messages.map(m => ({ role: m.role, content: m.content }))
-            const chatRes = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    messages: [...history, { role: 'user', content: text }], 
-                    userName: 'Student', 
-                    englishLevel,
-                    conversationId,
-                    scenario,
-                })
-            })
-            const { reply, conversationId: newConversationId } = await chatRes.json()
-            
-            if (newConversationId && !conversationId) {
-                setConversationId(newConversationId)
-            }
+            formData.append('history', JSON.stringify(history))
 
-            setMessages(prev => [...prev, { role: 'assistant', content: reply }])
-
-            // TTS
-            const speakRes = await fetch('/api/speak', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: reply })
-            })
-            const audioBuffer = await speakRes.arrayBuffer()
-            const audioCtx = new AudioContext()
-            const decoded = await audioCtx.decodeAudioData(audioBuffer)
-            const source = audioCtx.createBufferSource()
-            source.buffer = decoded
-            source.connect(audioCtx.destination)
-            source.start()
-            source.onended = () => {
-                setIsProcessing(false)
-                // Track time spent
-                fetch('/api/track-time', {
+            try {
+                const response = await fetch('/api/voice/message', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ minutes: 1 })
-                }).catch(console.error)
+                    body: formData
+                })
+
+                const data = await response.json()
+
+                if (data.error) {
+                    console.error('Voice API error:', data.error)
+                    setMessages(prev => prev.slice(0, -1))
+                    setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, there was an error. Please try again.' }])
+                    setIsProcessing(false)
+                    return
+                }
+
+                setMessages(prev => {
+                    const updated = [...prev]
+                    updated[updated.length - 1] = { role: 'user', content: data.userTranscript || '...' }
+                    return updated
+                })
+
+                if (data.conversationId && !conversationId) {
+                    setConversationId(data.conversationId)
+                }
+
+                setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
+
+                if (data.replyAudio) {
+                    const audioBytes = Uint8Array.from(atob(data.replyAudio), c => c.charCodeAt(0))
+                    const audioBlob = new Blob([audioBytes], { type: 'audio/mpeg' })
+                    const audioUrl = URL.createObjectURL(audioBlob)
+                    const audio = new Audio(audioUrl)
+                    audioRef.current = audio
+                    
+                    audio.onended = () => {
+                        setIsProcessing(false)
+                        URL.revokeObjectURL(audioUrl)
+                        fetch('/api/track-time', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ minutes: 1 })
+                        }).catch(console.error)
+                    }
+                    
+                    audio.onerror = (e) => {
+                        console.error('Audio playback error:', e)
+                        setIsProcessing(false)
+                        URL.revokeObjectURL(audioUrl)
+                    }
+                    
+                    await audio.play()
+                } else {
+                    setIsProcessing(false)
+                }
+            } catch (error) {
+                console.error('Failed to process voice message:', error)
+                setMessages(prev => prev.slice(0, -1))
+                setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, there was an error. Please try again.' }])
+                setIsProcessing(false)
             }
 
         } else {
