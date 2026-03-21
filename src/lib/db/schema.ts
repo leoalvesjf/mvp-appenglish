@@ -55,11 +55,11 @@ export const userProgress = pgTable('user_progress', {
     todayXp: integer('today_xp').default(0),
     lastSessionAt: timestamp('last_session_at'),
     updatedAt: timestamp('updated_at').defaultNow(),
-    achievements: json('achievements').default([]),
+    achievements: text('achievements').array().default([]),
     dailyGoalMinutes: integer('daily_goal_minutes').default(10),
     todayMinutes: integer('today_minutes').default(0),
     lastActivityDate: timestamp('last_activity_date'),
-    dailyMissions: json('daily_missions').default([]),
+    dailyMissions: text('daily_missions').array().default([]),
     missionsCompletedAt: timestamp('missions_completed_at'),
 })
 
