@@ -1,8 +1,38 @@
+export const runtime = 'edge'
+
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+
+async function verifyJWTEdge(token: string, secret: string): Promise<{ userId: string } | null> {
+    try {
+        const parts = token.split('.')
+        if (parts.length !== 3) return null
+
+        const encoder = new TextEncoder()
+        const keyData = encoder.encode(secret)
+        const key = await crypto.subtle.importKey(
+            'raw', keyData,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false, ['verify']
+        )
+
+        const signatureBase64 = parts[2].replace(/-/g, '+').replace(/_/g, '/')
+        const signatureBuffer = Uint8Array.from(atob(signatureBase64), c => c.charCodeAt(0))
+        const dataBuffer = encoder.encode(`${parts[0]}.${parts[1]}`)
+
+        const valid = await crypto.subtle.verify('HMAC', key, signatureBuffer, dataBuffer)
+        if (!valid) return null
+
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+        if (payload.exp && payload.exp < Date.now() / 1000) return null
+
+        return { userId: payload.userId }
+    } catch {
+        return null
+    }
+}
 
 const PUBLIC_ROUTES = [
     '/',
@@ -38,15 +68,14 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl)
     }
 
-    let userId: string
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
-        userId = decoded.userId
-    } catch {
+    const decoded = await verifyJWTEdge(token, JWT_SECRET)
+    if (!decoded) {
         const loginUrl = new URL('/login', request.url)
         loginUrl.searchParams.set('redirect', pathname)
         return NextResponse.redirect(loginUrl)
     }
+
+    const userId = decoded.userId
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
