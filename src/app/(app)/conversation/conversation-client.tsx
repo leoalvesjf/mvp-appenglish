@@ -27,6 +27,8 @@ export default function ConversationClient({
     const [isProcessing, setIsProcessing] = useState(false)
     const [recordingTime, setRecordingTime] = useState(0)
     const [conversationId, setConversationId] = useState<string | null>(null)
+    const [isConversationComplete, setIsConversationComplete] = useState(false)
+    const [isWarningShown, setIsWarningShown] = useState(false)
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const chunksRef = useRef<Blob[]>([])
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -39,6 +41,14 @@ export default function ConversationClient({
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight
         }
     }, [messages])
+
+    const handleReset = () => {
+        setMessages([])
+        setConversationId(null)
+        setIsConversationComplete(false)
+        setIsWarningShown(false)
+        setShowSelector(true)
+    }
 
     const startRecording = async () => {
         try {
@@ -55,7 +65,6 @@ export default function ConversationClient({
             timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000)
         } catch (error) {
             console.error('Failed to start recording:', error)
-            // Show user-friendly error message
             setMessages(prev => [...prev, { role: 'assistant', content: 'Microphone access is required for voice conversation. Please allow microphone permissions.' }])
         }
     }
@@ -120,6 +129,14 @@ export default function ConversationClient({
 
                 if (data.conversationId && !conversationId) {
                     setConversationId(data.conversationId)
+                }
+
+                if (data.isWarning) {
+                    setIsWarningShown(true)
+                }
+
+                if (data.isComplete) {
+                    setIsConversationComplete(true)
                 }
 
                 setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
@@ -268,16 +285,47 @@ export default function ConversationClient({
                             <div className="absolute -inset-4 rounded-full bg-destructive/10 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
                         </>
                     )}
-                    <button
-                        onClick={handleRecordToggle}
-                        disabled={isProcessing}
-                        className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 ${isRecording
-                                ? 'bg-destructive shadow-destructive/50 scale-110'
-                                : 'bg-primary shadow-primary/40 hover:scale-105 active:scale-95 disabled:opacity-50'
-                            }`}
-                    >
-                        {isRecording ? <Square className="w-8 h-8 fill-current" /> : <Mic className="w-8 h-8" />}
-                    </button>
+
+                    {isConversationComplete ? (
+                        <div className="w-80 bg-background/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+                            <div className="flex flex-col items-center gap-4">
+                                <span className="text-5xl">🏆</span>
+                                <p className="text-xl font-display font-semibold text-white">Conversa concluída!</p>
+                                <div className="flex gap-3 w-full mt-2">
+                                    <button
+                                        onClick={handleReset}
+                                        className="flex-1 h-11 rounded-xl border border-white/10 text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                                    >
+                                        Tentar novamente
+                                    </button>
+                                    <button
+                                        onClick={() => router.push('/dashboard')}
+                                        className="flex-1 h-11 rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors"
+                                    >
+                                        Ir para o Dashboard
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {isWarningShown && (
+                                <div className="mb-4 bg-yellow-500/20 backdrop-blur px-4 py-2 rounded-full border border-yellow-500/30 flex items-center text-sm text-yellow-300">
+                                    ⚠️ Última chance! Faça sua resposta final.
+                                </div>
+                            )}
+                            <button
+                                onClick={handleRecordToggle}
+                                disabled={isConversationComplete || isProcessing}
+                                className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 ${isRecording
+                                        ? 'bg-destructive shadow-destructive/50 scale-110'
+                                        : 'bg-primary shadow-primary/40 hover:scale-105 active:scale-95 disabled:opacity-50'
+                                    }`}
+                            >
+                                {isRecording ? <Square className="w-8 h-8 fill-current" /> : <Mic className="w-8 h-8" />}
+                            </button>
+                        </>
+                    )}
                 </div>
 
                 {isRecording && (
