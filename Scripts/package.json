@@ -1,0 +1,18 @@
+{
+  "name": "appenglish-scripts",
+  "version": "1.0.0",
+  "description": "Scripts de manutenção do mvp-appenglish",
+  "scripts": {
+    "generate": "ts-node generate-exercises.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}
