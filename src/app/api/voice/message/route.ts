@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { getMissAnaPrompt } from '@/lib/prompts/miss-ana'
 import { getAuthenticatedUser } from '@/lib/auth/helpers'
 import { db } from '@/lib/db'
-import { conversations, messages } from '@/lib/db/schema'
+import { conversations, messages, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { checkAndAwardAchievements } from '@/lib/gamification/achievements'
 import { getScenario, ScenarioId } from '@/lib/conversation/scenarios'
@@ -38,6 +38,41 @@ export async function POST(request: NextRequest) {
         const englishLevel = formData.get('englishLevel') as string || 'A1'
         const conversationIdParam = formData.get('conversationId') as string | null
         const historyParam = formData.get('history') as string | null
+
+        if (!conversationIdParam) {
+            const userData = await db.query.users.findFirst({
+                where: eq(users.id, user.id),
+            })
+
+            const today = new Date().toISOString().split('T')[0]
+            const lastVoiceDate = userData?.lastVoiceDate
+                ? new Date(userData.lastVoiceDate).toISOString().split('T')[0]
+                : null
+
+            let voiceConversationsToday = userData?.voiceConversationsToday || 0
+            const voiceLimitPerDay = userData?.voiceLimitPerDay || 3
+
+            if (lastVoiceDate !== today) {
+                voiceConversationsToday = 0
+            }
+
+            if (voiceConversationsToday >= voiceLimitPerDay) {
+                return NextResponse.json({
+                    error: 'VOICE_LIMIT_REACHED',
+                    limit: voiceLimitPerDay,
+                    message: 'Daily voice limit reached',
+                }, { status: 429 })
+            }
+
+            voiceConversationsToday += 1
+
+            await db.update(users)
+                .set({
+                    voiceConversationsToday,
+                    lastVoiceDate: today,
+                })
+                .where(eq(users.id, user.id))
+        }
 
         let history: { role: string; content: string }[] = []
         if (historyParam) {

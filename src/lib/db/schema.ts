@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, serial, boolean, json } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, integer, serial, boolean, json, date } from 'drizzle-orm/pg-core'
 
 export const authUsers = pgTable('auth_users', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -18,6 +18,9 @@ export const users = pgTable('users', {
     name: text('name'),
     englishLevel: text('english_level').default('beginner'),
     createdAt: timestamp('created_at').defaultNow(),
+    voiceConversationsToday: integer('voice_conversations_today').default(0),
+    voiceLimitPerDay: integer('voice_limit_per_day').default(3),
+    lastVoiceDate: date('last_voice_date'),
 })
 
 export const sessions = pgTable('sessions', {
