@@ -91,7 +91,19 @@ export async function POST(request: NextRequest) {
         })
         console.log(`[LLM - Claude Haiku] ${Date.now() - t2}ms`)
 
-        const reply = response.content[0].type === 'text' ? response.content[0].text : ''
+        const rawReply = response.content[0].type === 'text' ? response.content[0].text : ''
+
+        let isComplete = false
+        let isWarning = false
+        let reply = rawReply
+
+        if (rawReply.startsWith('[[COMPLETE]]')) {
+            isComplete = true
+            reply = rawReply.replace('[[COMPLETE]]', '').trim()
+        } else if (rawReply.startsWith('[[WARN]]')) {
+            isWarning = true
+            reply = rawReply.replace('[[WARN]]', '').trim()
+        }
 
         let currentConversationId = conversationIdParam
 
@@ -149,6 +161,8 @@ export async function POST(request: NextRequest) {
             corrections: [],
             conversationId: currentConversationId,
             newAchievements,
+            isComplete,
+            isWarning,
         })
     } catch (error) {
         console.error('[Voice Message] Error:', error)

@@ -32,5 +32,6 @@ TEACHING STYLE:
 RULES:
 - Always respond in English
 - Never break character
-- Keep the conversation natural and flowing`
+- Keep the conversation natural and flowing
+- When you include [[COMPLETE]] or [[WARN]] tokens, place them at the very START of your response before any other text`
 }
